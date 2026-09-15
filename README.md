@@ -20,7 +20,8 @@ the center of your screen — waits about 10 seconds, then flies back out.
   butterfly design (or leave it randomized), and toggle quiet hours
   (default: off 11pm–7am). The menu always shows how long until the next
   visit. Meeting suppression is on by default for Zoom, Teams, and Meet
-  apps; optional calendar-based meeting reminders are off by default.
+  apps; optional calendar-based meeting reminders are off by default. The
+  first launch and every resume begin with an immediate welcome visit.
 - No network calls, no telemetry — everything is a local timer and some
   Core Animation.
 
@@ -107,6 +108,8 @@ Items, and add `LilButterfly.app` once it's in `/Applications`.
 - `MeetingCalendar.swift` optionally reads local Calendar events, only after
   calendar reminders are enabled, to show a butterfly 15 minutes before a
   video meeting.
+- `KaviiRevealOverlay.swift` powers the `Kavii ✨` menu action: all bundled
+  butterfly designs gather briefly around the name in the center, then leave.
 - `Config.swift` is a small `Codable` struct persisted as JSON in
   `Application Support`.
 

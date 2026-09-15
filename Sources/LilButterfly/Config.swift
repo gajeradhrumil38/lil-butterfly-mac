@@ -15,6 +15,7 @@ struct Config: Codable {
     var suppressDuringMeetings: Bool
     var meetingReminderEnabled: Bool
     var meetingReminderMinutes: Int
+    var hasStarted: Bool
 
     static var `default`: Config {
         Config(
@@ -67,7 +68,8 @@ struct Config: Codable {
             customIntervalSeconds: nil,
             suppressDuringMeetings: true,
             meetingReminderEnabled: false,
-            meetingReminderMinutes: 15
+            meetingReminderMinutes: 15,
+            hasStarted: false
         )
     }
 
@@ -75,7 +77,7 @@ struct Config: Codable {
         minMinutes: Int, maxMinutes: Int, quietHoursEnabled: Bool, quietHoursStart: Int,
         quietHoursEnd: Int, paused: Bool, messages: [String], mode: String, dockEdge: String,
         pinnedAssetIndex: Int?, customIntervalSeconds: Double?, suppressDuringMeetings: Bool,
-        meetingReminderEnabled: Bool, meetingReminderMinutes: Int
+        meetingReminderEnabled: Bool, meetingReminderMinutes: Int, hasStarted: Bool
     ) {
         self.minMinutes = minMinutes
         self.maxMinutes = maxMinutes
@@ -91,12 +93,14 @@ struct Config: Codable {
         self.suppressDuringMeetings = suppressDuringMeetings
         self.meetingReminderEnabled = meetingReminderEnabled
         self.meetingReminderMinutes = meetingReminderMinutes
+        self.hasStarted = hasStarted
     }
 
     private enum CodingKeys: String, CodingKey {
         case minMinutes, maxMinutes, quietHoursEnabled, quietHoursStart, quietHoursEnd
         case paused, messages, mode, dockEdge, pinnedAssetIndex, customIntervalSeconds
         case suppressDuringMeetings, meetingReminderEnabled, meetingReminderMinutes
+        case hasStarted
     }
 
     init(from decoder: Decoder) throws {
@@ -115,6 +119,7 @@ struct Config: Codable {
         suppressDuringMeetings = try c.decodeIfPresent(Bool.self, forKey: .suppressDuringMeetings) ?? true
         meetingReminderEnabled = try c.decodeIfPresent(Bool.self, forKey: .meetingReminderEnabled) ?? false
         meetingReminderMinutes = try c.decodeIfPresent(Int.self, forKey: .meetingReminderMinutes) ?? 15
+        hasStarted = try c.decodeIfPresent(Bool.self, forKey: .hasStarted) ?? false
     }
 
     func isQuietHour(at date: Date = Date()) -> Bool {

@@ -4,6 +4,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private var overlays: [ScreenOverlay] = []
     private var dockedOverlay: DockedOverlay?
+    private var kaviiRevealOverlay: KaviiRevealOverlay?
     private var config: Config = ConfigStore.load()
     private var scheduleTimer: Timer?
     private var nextFireDate: Date?
@@ -18,6 +19,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem.button?.title = "🦋"
         let menu = NSMenu(); menu.delegate = self; statusItem.menu = menu
         rebuildMenu(menu); scheduleNext(); updateMeetingReminderTimer()
+        if !config.hasStarted {
+            config.hasStarted = true
+            ConfigStore.save(config)
+            fireVisit()
+        }
     }
 
     @objc private func rebuildOverlays() {
@@ -78,6 +84,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let assetMenu = NSMenu(); addAssetItem(to: assetMenu, title: "Random (default)", index: -1)
         for (index, name) in WingAssets.names().enumerated() { addAssetItem(to: assetMenu, title: name, index: index) }
         let assetItem = NSMenuItem(title: "Butterfly Design", action: nil, keyEquivalent: ""); assetItem.submenu = assetMenu; menu.addItem(assetItem); menu.addItem(.separator())
+        addItem(to: menu, title: "Kavii ✨", action: #selector(kaviiTapped))
+        menu.addItem(.separator())
         addItem(to: menu, title: "Quiet hours \(config.quietHoursEnabled ? "(\(config.quietHoursStart):00–\(config.quietHoursEnd):00) ✓" : "(off)")", action: #selector(toggleQuietHoursTapped)); menu.addItem(.separator())
         addItem(to: menu, title: "Hide during Zoom / Teams / Meet \(config.suppressDuringMeetings ? "✓" : "(off)")", action: #selector(toggleMeetingSuppressionTapped))
         addItem(to: menu, title: "Meeting reminder (15 min before) \(config.meetingReminderEnabled ? "✓" : "(off)")", action: #selector(toggleMeetingReminderTapped))
@@ -102,7 +110,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func showNowTapped() { fireVisit() }
-    @objc private func togglePauseTapped() { config.paused.toggle(); ConfigStore.save(config) }
+    @objc private func togglePauseTapped() {
+        let wasPaused = config.paused
+        config.paused.toggle()
+        ConfigStore.save(config)
+        if wasPaused && !config.paused {
+            fireVisit()
+            scheduleNext()
+        }
+    }
     @objc private func frequencyTapped(_ sender: NSMenuItem) { guard let pair = sender.representedObject as? [Int], pair.count == 2 else { return }; config.minMinutes = pair[0]; config.maxMinutes = pair[1]; config.customIntervalSeconds = nil; ConfigStore.save(config); scheduleNext() }
     @objc private func intervalSliderMoved(_ sender: NSSlider) { guard let view = sender.superview as? IntervalSliderView else { return }; config.customIntervalSeconds = view.sliderMoved(); ConfigStore.save(config); scheduleNext() }
     @objc private func modeTapped(_ sender: NSMenuItem) { guard let mode = sender.representedObject as? String, mode != config.mode else { return }; config.mode = mode; ConfigStore.save(config); rebuildOverlays() }
@@ -114,6 +130,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         config.meetingReminderEnabled.toggle()
         ConfigStore.save(config)
         updateMeetingReminderTimer()
+    }
+
+    @objc private func kaviiTapped() {
+        guard let screen = NSScreen.main else { return }
+        if kaviiRevealOverlay == nil { kaviiRevealOverlay = KaviiRevealOverlay(screen: screen) }
+        kaviiRevealOverlay?.show()
     }
 
     private func updateMeetingReminderTimer() {
