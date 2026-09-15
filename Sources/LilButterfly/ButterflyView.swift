@@ -2,69 +2,61 @@ import AppKit
 
 final class ButterflyView: NSView {
 
-    private let leftWing = CAShapeLayer()
-    private let rightWing = CAShapeLayer()
-    private let body = CAShapeLayer()
+    private let leftWing = CALayer()
+    private let rightWing = CALayer()
 
-    static let size: CGFloat = 46
-
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
+    init(center: CGPoint, pinnedAssetIndex: Int?) {
+        let image = WingAssets.pick(pinnedIndex: pinnedAssetIndex)
+        let pointSize = CGSize(
+            width: CGFloat(image.width) / WingAssets.rasterScale,
+            height: CGFloat(image.height) / WingAssets.rasterScale
+        )
+        let displayWidth: CGFloat = 56
+        let scale = displayWidth / pointSize.width
+        let displaySize = CGSize(width: pointSize.width * scale, height: pointSize.height * scale)
+        let frame = CGRect(
+            x: center.x - displaySize.width / 2,
+            y: center.y - displaySize.height / 2,
+            width: displaySize.width,
+            height: displaySize.height
+        )
+        super.init(frame: frame)
         wantsLayer = true
-        buildShapes()
+        buildWings(from: image, displaySize: displaySize)
         startFlutter()
     }
 
     required init?(coder: NSCoder) { fatalError("unavailable") }
 
-    private func buildShapes() {
+    private func buildWings(from image: CGImage, displaySize: CGSize) {
         guard let root = layer else { return }
-        let s = Self.size
 
-        // Left wing (upper + lower lobe), roughly mirrored around x = 23.
-        let leftPath = CGMutablePath()
-        leftPath.move(to: CGPoint(x: 23, y: 26))
-        leftPath.addCurve(to: CGPoint(x: 6, y: 24), control1: CGPoint(x: 10, y: 42), control2: CGPoint(x: -6, y: 38))
-        leftPath.addCurve(to: CGPoint(x: 23, y: 26), control1: CGPoint(x: 10, y: 19), control2: CGPoint(x: 18, y: 21))
-        leftPath.closeSubpath()
-        leftPath.move(to: CGPoint(x: 23, y: 22))
-        leftPath.addCurve(to: CGPoint(x: 9, y: 6), control1: CGPoint(x: 13, y: 16), control2: CGPoint(x: 2, y: 12))
-        leftPath.addCurve(to: CGPoint(x: 23, y: 22), control1: CGPoint(x: 14, y: 2), control2: CGPoint(x: 20, y: 10))
-        leftPath.closeSubpath()
+        let fullWidth = image.width
+        let fullHeight = image.height
+        let leftHalfPixels = fullWidth / 2
+        guard
+            let leftCG = image.cropping(to: CGRect(x: 0, y: 0, width: leftHalfPixels, height: fullHeight)),
+            let rightCG = image.cropping(to: CGRect(x: leftHalfPixels, y: 0, width: fullWidth - leftHalfPixels, height: fullHeight))
+        else { return }
 
-        let rightPath = CGMutablePath()
-        rightPath.move(to: CGPoint(x: 23, y: 26))
-        rightPath.addCurve(to: CGPoint(x: 40, y: 24), control1: CGPoint(x: 36, y: 42), control2: CGPoint(x: 52, y: 38))
-        rightPath.addCurve(to: CGPoint(x: 23, y: 26), control1: CGPoint(x: 36, y: 19), control2: CGPoint(x: 28, y: 21))
-        rightPath.closeSubpath()
-        rightPath.move(to: CGPoint(x: 23, y: 22))
-        rightPath.addCurve(to: CGPoint(x: 37, y: 6), control1: CGPoint(x: 33, y: 16), control2: CGPoint(x: 44, y: 12))
-        rightPath.addCurve(to: CGPoint(x: 23, y: 22), control1: CGPoint(x: 32, y: 2), control2: CGPoint(x: 26, y: 10))
-        rightPath.closeSubpath()
+        let leftWidth = displaySize.width * CGFloat(leftHalfPixels) / CGFloat(fullWidth)
+        let rightWidth = displaySize.width - leftWidth
 
-        leftWing.fillColor = NSColor(calibratedRed: 0.79, green: 0.65, blue: 0.91, alpha: 1).cgColor
-        leftWing.anchorPoint = CGPoint(x: 23 / s, y: 23 / s)
-        leftWing.position = CGPoint(x: 23, y: 23)
-        leftWing.bounds = CGRect(x: 0, y: 0, width: s, height: s)
-        leftWing.path = leftPath
+        leftWing.contents = leftCG
+        leftWing.contentsScale = WingAssets.rasterScale
+        leftWing.bounds = CGRect(x: 0, y: 0, width: leftWidth, height: displaySize.height)
+        leftWing.anchorPoint = CGPoint(x: 1, y: 0.5)
+        leftWing.position = CGPoint(x: displaySize.width / 2, y: displaySize.height / 2)
 
-        rightWing.fillColor = NSColor(calibratedRed: 0.79, green: 0.65, blue: 0.91, alpha: 1).cgColor
-        rightWing.anchorPoint = CGPoint(x: 23 / s, y: 23 / s)
-        rightWing.position = CGPoint(x: 23, y: 23)
-        rightWing.bounds = CGRect(x: 0, y: 0, width: s, height: s)
-        rightWing.path = rightPath
-
-        let bodyPath = CGMutablePath()
-        bodyPath.addEllipse(in: CGRect(x: 21, y: 12, width: 4, height: 20))
-        bodyPath.addEllipse(in: CGRect(x: 20.5, y: 30, width: 5, height: 5))
-        body.path = bodyPath
-        body.fillColor = NSColor(calibratedRed: 0.29, green: 0.23, blue: 0.34, alpha: 1).cgColor
+        rightWing.contents = rightCG
+        rightWing.contentsScale = WingAssets.rasterScale
+        rightWing.bounds = CGRect(x: 0, y: 0, width: rightWidth, height: displaySize.height)
+        rightWing.anchorPoint = CGPoint(x: 0, y: 0.5)
+        rightWing.position = CGPoint(x: displaySize.width / 2, y: displaySize.height / 2)
 
         root.addSublayer(leftWing)
         root.addSublayer(rightWing)
-        root.addSublayer(body)
 
-        // Soft drop shadow so it reads clearly over any background.
         root.shadowColor = NSColor.black.cgColor
         root.shadowOpacity = 0.18
         root.shadowRadius = 4
