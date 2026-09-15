@@ -87,6 +87,7 @@ final class ButterflyView: NSView {
 
         let segments = 36
         let wobbleAmplitude: CGFloat = 22
+        let tiltAmplitude: CGFloat = 0.2
         let dx = to.x - from.x
         let dy = to.y - from.y
         let length = sqrt(dx * dx + dy * dy)
@@ -94,16 +95,21 @@ final class ButterflyView: NSView {
 
         let cgPath = CGMutablePath()
         cgPath.move(to: from)
+        var rotations: [NSNumber] = [0]
         for i in 1...segments {
             let t = CGFloat(i) / CGFloat(segments)
             let eased = easeIn ? (t * t * t) : (1 - pow(1 - t, 3))
             let baseX = from.x + dx * eased
             let baseY = from.y + dy * eased
-            let wobble = sin(t * .pi * 3) * wobbleAmplitude * (1 - abs(2 * t - 1))
+            let envelope = 1 - abs(2 * t - 1)
+            let phase = sin(t * .pi * 3)
+            let wobble = phase * wobbleAmplitude * envelope
             cgPath.addLine(to: CGPoint(x: baseX + perp.x * wobble, y: baseY + perp.y * wobble))
+            rotations.append(NSNumber(value: Double(phase * tiltAmplitude * envelope)))
         }
 
-        layer.position = to // final model value, set up front
+        layer.position = to
+        layer.transform = CATransform3DIdentity
 
         let anim = CAKeyframeAnimation(keyPath: "position")
         anim.path = cgPath
@@ -111,6 +117,13 @@ final class ButterflyView: NSView {
         anim.calculationMode = .cubic
         anim.fillMode = .forwards
         layer.add(anim, forKey: "flight")
+
+        let tilt = CAKeyframeAnimation(keyPath: "transform.rotation.z")
+        tilt.values = rotations
+        tilt.duration = duration
+        tilt.calculationMode = .cubic
+        tilt.fillMode = .forwards
+        layer.add(tilt, forKey: "tilt")
 
         DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
             completion?()

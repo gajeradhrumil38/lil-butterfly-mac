@@ -15,7 +15,11 @@ the center of your screen — waits about 10 seconds, then flies back out.
   (`.accessory` activation policy).
 - Lives at screen edges, not the center.
 - Menu bar (🦋) icon lets you trigger a test flight, pause/resume, change
-  frequency, or toggle quiet hours (default: off 11pm–7am).
+  frequency (via presets or a slider for exact/short testing intervals),
+  switch between Roaming and Docked modes, pick a dock edge and a specific
+  butterfly design (or leave it randomized), and toggle quiet hours
+  (default: off 11pm–7am). The menu always shows how long until the next
+  visit.
 - No network calls, no telemetry — everything is a local timer and some
   Core Animation.
 
@@ -47,10 +51,12 @@ now"** to test immediately instead of waiting.
   `~/Library/Application Support/LilButterfly/config.json` — edit that file
   directly any time for things not exposed in the menu (like the message
   list).
-- **Look of the butterfly**: `Sources/LilButterfly/ButterflyView.swift` — the
-  wings are plain `CAShapeLayer` bezier shapes; swap the path data or the
-  fill colors, or replace the whole approach with an image/sprite sheet if
-  you'd rather use real artwork.
+- **Look of the butterfly**: the 9 designs live in
+  `Sources/LilButterfly/Resources/Wings/`; add or replace SVGs there (and
+  update `WingAssets.names()`) to change the art. `ButterflyView.swift`
+  crops each into left/right halves and flutters them independently — it
+  expects the source art to be roughly symmetric about its horizontal
+  midpoint.
 - **Flight feel**: `ScreenOverlay.swift` controls timing (`duration: 1.4` /
   `1.2`), how long it lingers (`restingSeconds`), and how far from the edge
   it rests (`margin`). `ButterflyView.flyPath` controls the wobble amplitude
@@ -74,17 +80,24 @@ Items, and add `LilButterfly.app` once it's in `/Applications`.
 - `main.swift` sets `NSApplication.shared.setActivationPolicy(.accessory)`
   (no Dock icon) and starts the run loop.
 - `AppDelegate.swift` owns the menu bar item/menu, the config, and a
-  `Timer`-based scheduler that picks a random delay and asks a random
-  screen's overlay to run a "visit."
+  `Timer`-based scheduler that picks a random delay and — depending on
+  whether the mode is Roaming or Docked — asks a random screen's
+  `ScreenOverlay` or the single `DockedOverlay` to run a "visit." The menu
+  rebuilds itself fresh every time it's opened (`NSMenuDelegate`), which is
+  how the "next visit in ~N min" line stays current.
 - `OverlayWindow.swift` is one borderless, transparent, click-through,
   always-on-top `NSWindow` per connected screen (rebuilt automatically if
   displays are connected/disconnected).
 - `ScreenOverlay.swift` orchestrates one full visit on a given screen: picks
   a random edge, computes a rest point and an off-screen entry point, and
   sequences the fly-in → bubble → wait → fly-out → cleanup.
-- `ButterflyView.swift` draws the butterfly (two `CAShapeLayer` wings with a
-  looping flutter animation) and implements the eased, wobbly flight-path
-  animation via `CAKeyframeAnimation`.
+- `WingAssets.swift` loads and rasterizes the bundled SVG designs.
+- `ButterflyView.swift` draws the butterfly (two bitmap wing-half layers
+  with a looping flutter animation) and implements the eased, wobbly,
+  tilt-banking flight-path animation via `CAKeyframeAnimation`.
+- `DockedOverlay.swift` is the dock-mode counterpart to `ScreenOverlay.swift`
+  — keeps one butterfly permanently parked at a configurable edge instead
+  of flying fully on/off screen between visits.
 - `BubbleView.swift` is the small rounded message bubble with a simple fade
   in/out.
 - `Config.swift` is a small `Codable` struct persisted as JSON in
