@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:LilButterflyMac}",
+            "name": "Debug LilButterfly",
+            "target": "LilButterfly",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug LilButterfly"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:LilButterflyMac}",
+            "name": "Release LilButterfly",
+            "target": "LilButterfly",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release LilButterfly"
+        }
+    ]
+}

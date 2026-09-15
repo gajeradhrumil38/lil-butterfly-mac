@@ -1,0 +1,4 @@
+.build/
+.swiftpm/
+LilButterfly.app
+.DS_Store
