@@ -33,6 +33,20 @@ enum WingAssets {
         return assets.randomElement()!
     }
 
+    /// A compact, full-color thumbnail for the design picker.
+    static func menuImage(at index: Int, width: CGFloat = 22) -> NSImage? {
+        guard assets.indices.contains(index) else { return nil }
+        let asset = assets[index]
+        let imageBounds = CGRect(x: 0, y: 0, width: asset.image.width, height: asset.image.height)
+        let cropRect = asset.inkBounds.integral.intersection(imageBounds)
+        guard let cropped = asset.image.cropping(to: cropRect) else { return nil }
+        let aspect = CGFloat(cropped.height) / max(CGFloat(cropped.width), 1)
+        return NSImage(
+            cgImage: cropped,
+            size: NSSize(width: width, height: width * aspect)
+        )
+    }
+
     private static func loadRasterized(name: String) -> WingAsset? {
         guard let url = Bundle.module.url(forResource: name, withExtension: "svg", subdirectory: "Wings"),
               let image = NSImage(contentsOf: url)

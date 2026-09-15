@@ -7,6 +7,7 @@ import AppKit
 /// label like "Large".
 final class SizeSliderView: NSView {
     private let label = NSTextField(labelWithString: "")
+    private let minimumImageView = NSImageView()
     private let previewImageView = NSImageView()
     let slider = NSSlider()
 
@@ -20,13 +21,18 @@ final class SizeSliderView: NSView {
     private static let previewAspect = CGFloat(previewAsset.image.height) / CGFloat(previewAsset.image.width)
 
     init(currentIndex: Int, target: AnyObject, action: Selector) {
-        super.init(frame: CGRect(x: 0, y: 0, width: 260, height: 44))
-        label.frame = CGRect(x: 14, y: 24, width: 192, height: 16)
+        super.init(frame: CGRect(x: 0, y: 0, width: 260, height: 50))
+        label.frame = CGRect(x: 14, y: 29, width: 192, height: 16)
         label.font = NSFont.systemFont(ofSize: 11)
         label.textColor = .secondaryLabelColor
         addSubview(label)
 
-        slider.frame = CGRect(x: 14, y: 4, width: 192, height: 18)
+        minimumImageView.image = Self.previewImage
+        minimumImageView.imageScaling = .scaleProportionallyDown
+        minimumImageView.frame = CGRect(x: 14, y: 7, width: 15, height: 13)
+        addSubview(minimumImageView)
+
+        slider.frame = CGRect(x: 35, y: 5, width: 158, height: 18)
         slider.minValue = 0
         slider.maxValue = Double(ButterflySize.widths.count - 1)
         slider.numberOfTickMarks = ButterflySize.widths.count
@@ -42,7 +48,7 @@ final class SizeSliderView: NSView {
 
         let clampedIndex = ButterflySize.widths.indices.contains(currentIndex) ? currentIndex : ButterflySize.defaultIndex
         slider.doubleValue = Double(clampedIndex)
-        label.stringValue = "Butterfly size: \(ButterflySize.labels[clampedIndex])"
+        label.stringValue = "Size · \(ButterflySize.labels[clampedIndex])"
         updatePreview(forIndex: clampedIndex)
     }
 
@@ -52,7 +58,7 @@ final class SizeSliderView: NSView {
     /// updates the label and preview to match.
     func sliderMoved() -> Int {
         let index = Int(slider.doubleValue.rounded())
-        label.stringValue = "Butterfly size: \(ButterflySize.labels[index])"
+        label.stringValue = "Size · \(ButterflySize.labels[index])"
         updatePreview(forIndex: index)
         return index
     }
@@ -62,7 +68,7 @@ final class SizeSliderView: NSView {
         let previewHeight = previewWidth * Self.previewAspect
         previewImageView.frame = CGRect(
             x: bounds.width - 14 - previewWidth,
-            y: (bounds.height - previewHeight) / 2,
+            y: 3 + (22 - previewHeight) / 2,
             width: previewWidth,
             height: previewHeight
         )

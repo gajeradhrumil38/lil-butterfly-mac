@@ -89,62 +89,201 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         headerItem.image = regularStatusIcon
         menu.addItem(headerItem)
         menu.addItem(.separator())
+
         let countdown: String
         if config.paused { countdown = "Paused" }
-        else if config.isQuietHour() { countdown = "Quiet hours (gentle mode — rare, soft messages)" }
-        else if let nextFireDate { countdown = "Next visit in ~\(IntervalSliderView.formatted(max(0, nextFireDate.timeIntervalSinceNow)))" }
-        else { countdown = "Next visit: not scheduled" }
-        let countdownItem = NSMenuItem(title: countdown, action: nil, keyEquivalent: ""); countdownItem.isEnabled = false; menu.addItem(countdownItem)
+        else if config.isQuietHour() { countdown = "Quiet time" }
+        else if let nextFireDate { countdown = "Next · ~\(IntervalSliderView.formatted(max(0, nextFireDate.timeIntervalSinceNow)))" }
+        else { countdown = "Ready" }
+        let countdownItem = NSMenuItem(title: countdown, action: nil, keyEquivalent: "")
+        countdownItem.image = symbolImage("clock")
+        countdownItem.isEnabled = false
+        menu.addItem(countdownItem)
+
         if let latestRelease {
-            addItem(to: menu, title: "Update available — v\(latestRelease.version)", action: #selector(updateTapped))
+            addItem(to: menu, title: "Update · v\(latestRelease.version)", action: #selector(updateTapped), symbol: "arrow.down.circle.fill")
         } else {
-            addItem(to: menu, title: "Check for Updates…", action: #selector(checkForUpdatesTapped))
+            addItem(to: menu, title: "Check for Updates…", action: #selector(checkForUpdatesTapped), symbol: "arrow.triangle.2.circlepath")
         }
-        addItem(to: menu, title: "Show a butterfly now", action: #selector(showNowTapped))
-        addItem(to: menu, title: config.paused ? "Resume" : "Pause", action: #selector(togglePauseTapped)); menu.addItem(.separator())
-        addFrequencyItem(to: menu, title: "Every 45–90 min (default)", min: 45, max: 90)
-        addFrequencyItem(to: menu, title: "Every 20–40 min (more often)", min: 20, max: 40)
-        addFrequencyItem(to: menu, title: "Every 2–3 hours (rare)", min: 120, max: 180)
+        addItem(to: menu, title: "Show Butterfly", action: #selector(showNowTapped), symbol: "sparkles")
+        addItem(
+            to: menu,
+            title: config.paused ? "Resume Visits" : "Pause Visits",
+            action: #selector(togglePauseTapped),
+            symbol: config.paused ? "play.circle.fill" : "pause.circle.fill"
+        )
+        menu.addItem(.separator())
+
+        let frequencyMenu = NSMenu(title: "Visit Timing")
+        addFrequencyItem(to: frequencyMenu, title: "Often · 20–40 min", min: 20, max: 40)
+        addFrequencyItem(to: frequencyMenu, title: "Gentle · 45–90 min", min: 45, max: 90)
+        addFrequencyItem(to: frequencyMenu, title: "Rare · 2–3 hr", min: 120, max: 180)
+        frequencyMenu.addItem(.separator())
         let current = config.customIntervalSeconds ?? Double(config.minMinutes) * 60
         let slider = IntervalSliderView(currentSeconds: current, target: self, action: #selector(intervalSliderMoved(_:)))
-        let sliderItem = NSMenuItem(); sliderItem.view = slider; menu.addItem(sliderItem); menu.addItem(.separator())
-        addModeItem(to: menu, title: "Roaming", mode: "roaming"); addModeItem(to: menu, title: "Docked", mode: "docked")
+        let sliderItem = NSMenuItem()
+        sliderItem.view = slider
+        frequencyMenu.addItem(sliderItem)
+        let frequencyItem = NSMenuItem(title: "Visits · \(frequencySummary)", action: nil, keyEquivalent: "")
+        frequencyItem.image = symbolImage("clock")
+        frequencyItem.submenu = frequencyMenu
+        menu.addItem(frequencyItem)
+
+        let movementMenu = NSMenu(title: "Movement")
+        addModeItem(to: movementMenu, title: "Roam", mode: "roaming", symbol: "paperplane")
+        addModeItem(to: movementMenu, title: "Dock", mode: "docked", symbol: "pin.fill")
+        movementMenu.addItem(.separator())
         let edgeMenu = NSMenu()
         for edge in ScreenEdge.allCases {
             let item = NSMenuItem(title: edge.rawValue.capitalized, action: #selector(dockEdgeTapped(_:)), keyEquivalent: "")
-            item.target = self; item.representedObject = edge.rawValue; item.state = config.dockEdge == edge.rawValue ? .on : .off; edgeMenu.addItem(item)
+            item.target = self
+            item.representedObject = edge.rawValue
+            item.image = symbolImage(edgeSymbol(for: edge))
+            item.state = config.dockEdge == edge.rawValue ? .on : .off
+            edgeMenu.addItem(item)
         }
-        let edgeItem = NSMenuItem(title: "Dock Edge", action: nil, keyEquivalent: ""); edgeItem.submenu = edgeMenu; menu.addItem(edgeItem)
-        let assetMenu = NSMenu(); addAssetItem(to: assetMenu, title: "Random (default)", index: -1)
-        for (index, name) in WingAssets.names().enumerated() { addAssetItem(to: assetMenu, title: name, index: index) }
-        let assetItem = NSMenuItem(title: "Butterfly Design", action: nil, keyEquivalent: ""); assetItem.submenu = assetMenu; menu.addItem(assetItem)
+        let edgeItem = NSMenuItem(title: "Dock Edge", action: nil, keyEquivalent: "")
+        edgeItem.image = symbolImage("square.dashed")
+        edgeItem.submenu = edgeMenu
+        movementMenu.addItem(edgeItem)
+        let dragHint = NSMenuItem(title: "Drag Butterfly to Move", action: nil, keyEquivalent: "")
+        dragHint.image = symbolImage("hand.draw")
+        dragHint.isEnabled = false
+        movementMenu.addItem(dragHint)
+        let movementItem = NSMenuItem(
+            title: config.mode == "docked" ? "Movement · Docked" : "Movement · Roaming",
+            action: nil,
+            keyEquivalent: ""
+        )
+        movementItem.image = symbolImage(config.mode == "docked" ? "pin.fill" : "paperplane")
+        movementItem.submenu = movementMenu
+        menu.addItem(movementItem)
+
+        let appearanceMenu = NSMenu(title: "Butterfly")
+        addAssetItem(to: appearanceMenu, title: "Surprise Me", index: -1)
+        for index in WingAssets.names().indices {
+            addAssetItem(to: appearanceMenu, title: "Design \(index + 1)", index: index)
+        }
+        appearanceMenu.addItem(.separator())
         let sizeSlider = SizeSliderView(currentIndex: config.butterflySizeIndex, target: self, action: #selector(sizeSliderMoved(_:)))
-        let sizeSliderItem = NSMenuItem(); sizeSliderItem.view = sizeSlider; menu.addItem(sizeSliderItem)
+        let sizeSliderItem = NSMenuItem()
+        sizeSliderItem.view = sizeSlider
+        appearanceMenu.addItem(sizeSliderItem)
+        let appearanceItem = NSMenuItem(title: butterflySummary, action: nil, keyEquivalent: "")
+        appearanceItem.image = WingAssets.menuImage(at: config.pinnedAssetIndex ?? 0)
+        appearanceItem.submenu = appearanceMenu
+        menu.addItem(appearanceItem)
+
+        let messageMenu = NSMenu(title: "Message")
         let restingSlider = RestingSliderView(currentSeconds: config.restingSeconds, target: self, action: #selector(restingSliderMoved(_:)))
-        let restingSliderItem = NSMenuItem(); restingSliderItem.view = restingSlider; menu.addItem(restingSliderItem); menu.addItem(.separator())
-        addItem(to: menu, title: "Kavii ✨", action: #selector(kaviiTapped))
+        let restingSliderItem = NSMenuItem()
+        restingSliderItem.view = restingSlider
+        messageMenu.addItem(restingSliderItem)
+        let messageItem = NSMenuItem(title: "Message · \(RestingSliderView.formatted(config.restingSeconds))", action: nil, keyEquivalent: "")
+        messageItem.image = symbolImage("text.bubble")
+        messageItem.submenu = messageMenu
+        menu.addItem(messageItem)
         menu.addItem(.separator())
-        addItem(to: menu, title: "Quiet hours \(config.quietHoursEnabled ? "(\(config.quietHoursStart):00–\(config.quietHoursEnd):00) ✓" : "(off)")", action: #selector(toggleQuietHoursTapped)); menu.addItem(.separator())
-        addItem(to: menu, title: "Hide during Zoom / Teams / Meet \(config.suppressDuringMeetings ? "✓" : "(off)")", action: #selector(toggleMeetingSuppressionTapped))
-        addItem(to: menu, title: "Meeting reminder (15 min before) \(config.meetingReminderEnabled ? "✓" : "(off)")", action: #selector(toggleMeetingReminderTapped))
-        let meetingNote = NSMenuItem(title: "Google Meet in Chrome/Safari: use Pause", action: nil, keyEquivalent: "")
-        meetingNote.isEnabled = false
-        menu.addItem(meetingNote)
+
+        addItem(to: menu, title: "Kavii", action: #selector(kaviiTapped), symbol: "wand.and.stars")
         menu.addItem(.separator())
-        addItem(to: menu, title: "Quit", action: #selector(quitTapped), keyEquivalent: "q")
+
+        let quietItem = addItem(
+            to: menu,
+            title: "Quiet · \(config.quietHoursStart):00–\(config.quietHoursEnd):00",
+            action: #selector(toggleQuietHoursTapped),
+            symbol: "moon.stars"
+        )
+        quietItem.state = config.quietHoursEnabled ? .on : .off
+        let meetingItem = addItem(
+            to: menu,
+            title: "Hide During Meetings",
+            action: #selector(toggleMeetingSuppressionTapped),
+            symbol: "video.slash"
+        )
+        meetingItem.state = config.suppressDuringMeetings ? .on : .off
+        let reminderItem = addItem(
+            to: menu,
+            title: "Meeting Reminder · 15 min",
+            action: #selector(toggleMeetingReminderTapped),
+            symbol: "bell"
+        )
+        reminderItem.state = config.meetingReminderEnabled ? .on : .off
+        menu.addItem(.separator())
+        addItem(to: menu, title: "Quit Butterfly", action: #selector(quitTapped), keyEquivalent: "q", symbol: "power")
     }
 
-    private func addItem(to menu: NSMenu, title: String, action: Selector, keyEquivalent: String = "") {
-        let item = NSMenuItem(title: title, action: action, keyEquivalent: keyEquivalent); item.target = self; menu.addItem(item)
+    @discardableResult
+    private func addItem(
+        to menu: NSMenu,
+        title: String,
+        action: Selector,
+        keyEquivalent: String = "",
+        symbol: String? = nil
+    ) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: keyEquivalent)
+        item.target = self
+        if let symbol { item.image = symbolImage(symbol) }
+        menu.addItem(item)
+        return item
     }
-    private func addModeItem(to menu: NSMenu, title: String, mode: String) {
-        let item = NSMenuItem(title: title, action: #selector(modeTapped(_:)), keyEquivalent: ""); item.target = self; item.representedObject = mode; item.state = config.mode == mode ? .on : .off; menu.addItem(item)
+
+    private func addModeItem(to menu: NSMenu, title: String, mode: String, symbol: String) {
+        let item = NSMenuItem(title: title, action: #selector(modeTapped(_:)), keyEquivalent: "")
+        item.target = self
+        item.representedObject = mode
+        item.image = symbolImage(symbol)
+        item.state = config.mode == mode ? .on : .off
+        menu.addItem(item)
     }
+
     private func addAssetItem(to menu: NSMenu, title: String, index: Int) {
-        let item = NSMenuItem(title: title, action: #selector(assetTapped(_:)), keyEquivalent: ""); item.target = self; item.representedObject = index; item.state = index == -1 ? (config.pinnedAssetIndex == nil ? .on : .off) : (config.pinnedAssetIndex == index ? .on : .off); menu.addItem(item)
+        let item = NSMenuItem(title: title, action: #selector(assetTapped(_:)), keyEquivalent: "")
+        item.target = self
+        item.representedObject = index
+        item.image = index == -1 ? symbolImage("sparkles") : WingAssets.menuImage(at: index)
+        item.state = index == -1 ? (config.pinnedAssetIndex == nil ? .on : .off) : (config.pinnedAssetIndex == index ? .on : .off)
+        menu.addItem(item)
     }
+
     private func addFrequencyItem(to menu: NSMenu, title: String, min: Int, max: Int) {
-        let item = NSMenuItem(title: title, action: #selector(frequencyTapped(_:)), keyEquivalent: ""); item.target = self; item.representedObject = [min, max]; item.state = config.customIntervalSeconds == nil && config.minMinutes == min && config.maxMinutes == max ? .on : .off; menu.addItem(item)
+        let item = NSMenuItem(title: title, action: #selector(frequencyTapped(_:)), keyEquivalent: "")
+        item.target = self
+        item.representedObject = [min, max]
+        item.image = symbolImage(min < 45 ? "hare" : (min >= 120 ? "tortoise" : "clock"))
+        item.state = config.customIntervalSeconds == nil && config.minMinutes == min && config.maxMinutes == max ? .on : .off
+        menu.addItem(item)
+    }
+
+    private var frequencySummary: String {
+        if let custom = config.customIntervalSeconds {
+            return IntervalSliderView.formatted(custom)
+        }
+        let minimum = IntervalSliderView.formatted(Double(config.minMinutes) * 60)
+        let maximum = IntervalSliderView.formatted(Double(config.maxMinutes) * 60)
+        return "\(minimum)–\(maximum)"
+    }
+
+    private var butterflySummary: String {
+        guard let index = config.pinnedAssetIndex else { return "Butterfly · Surprise" }
+        return "Butterfly · Design \(index + 1)"
+    }
+
+    private func symbolImage(_ name: String) -> NSImage? {
+        guard let image = NSImage(systemSymbolName: name, accessibilityDescription: nil) else { return nil }
+        let configuration = NSImage.SymbolConfiguration(pointSize: 13, weight: .regular)
+        let configured = image.withSymbolConfiguration(configuration) ?? image
+        configured.isTemplate = true
+        return configured
+    }
+
+    private func edgeSymbol(for edge: ScreenEdge) -> String {
+        switch edge {
+        case .left: return "arrow.left"
+        case .right: return "arrow.right"
+        case .top: return "arrow.up"
+        case .bottom: return "arrow.down"
+        }
     }
 
     @objc private func showNowTapped() { _ = fireVisit(manualOverride: true) }
