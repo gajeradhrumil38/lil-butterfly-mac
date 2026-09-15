@@ -224,7 +224,7 @@ final class DockedOverlay {
                     bubble.removeFromSuperview()
                 }
                 butterfly.stopHover()
-                butterfly.farewellSweep {
+                butterfly.farewellSweep(distance: bubble.frame.width + 40) {
                     guard self.visitID == currentVisitID else { return }
                     self.isBusy = false
                 }
@@ -248,7 +248,7 @@ final class DockedOverlay {
                         bubble.removeFromSuperview()
                     }
                     butterfly.stopHover()
-                    butterfly.farewellSweep {
+                    butterfly.farewellSweep(distance: bubble.frame.width + 40) {
                         guard self.visitID == currentVisitID else { return }
                         butterfly.flyPath(from: inward, to: self.dockPoint(margin: 40), duration: 1.2, easeIn: true) {
                             guard self.visitID == currentVisitID else { return }

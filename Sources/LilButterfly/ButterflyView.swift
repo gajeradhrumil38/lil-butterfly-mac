@@ -163,23 +163,28 @@ final class ButterflyView: NSView {
         layer?.removeAnimation(forKey: "hoverSway")
     }
 
-    /// A quick left-right-left flourish in place, meant to run at the same
-    /// moment the message card fades out — a little goodbye wave rather
-    /// than just sitting still while the card disappears. Purely visual
-    /// (like the hover orbit, this never changes the model centerPosition),
-    /// so call stopHover() first to avoid two animations competing for the
-    /// same "position" keyPath, and the actual departure flyPath should
-    /// start from `centerPosition` after this completes.
-    func farewellSweep(completion: @escaping () -> Void) {
+    /// A goodbye sweep that actually crosses the message card — out to one
+    /// side, past the card, and back — timed to run at the same moment the
+    /// card fades out, so the card is still visible while the butterfly
+    /// passes by/under it, rather than the butterfly just wiggling in
+    /// place. `distance` should span past the card's far edge (its caller
+    /// knows the card's width and which side it's on). Dips slightly on
+    /// the crossing passes so it reads as ducking under the card rather
+    /// than flying through the text. Purely visual (like the hover orbit,
+    /// this never changes the model centerPosition), so call stopHover()
+    /// first to avoid two animations competing for the same "position"
+    /// keyPath, and the actual departure flyPath should start from
+    /// `centerPosition` after this completes.
+    func farewellSweep(distance: CGFloat, completion: @escaping () -> Void) {
         guard let layer else { completion(); return }
         let origin = frame.origin
-        let amplitude: CGFloat = 18
-        let duration: CFTimeInterval = 0.6
+        let dip: CGFloat = 14
+        let duration: CFTimeInterval = 1.1
 
         let path = CGMutablePath()
         path.move(to: origin)
-        path.addLine(to: CGPoint(x: origin.x + amplitude, y: origin.y))
-        path.addLine(to: CGPoint(x: origin.x - amplitude, y: origin.y))
+        path.addLine(to: CGPoint(x: origin.x + distance, y: origin.y - dip))
+        path.addLine(to: CGPoint(x: origin.x - distance, y: origin.y - dip))
         path.addLine(to: origin)
 
         let sweep = CAKeyframeAnimation(keyPath: "position")

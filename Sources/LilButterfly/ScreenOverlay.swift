@@ -120,7 +120,7 @@ final class ScreenOverlay {
                     bubble.removeFromSuperview()
                 }
                 butterfly.stopHover()
-                butterfly.farewellSweep {
+                butterfly.farewellSweep(distance: bubble.frame.width + 40) {
                     butterfly.flyPath(from: rest, to: off, duration: 1.2, easeIn: true) {
                         butterfly.removeFromSuperview()
                         self.isBusy = false
