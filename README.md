@@ -1,5 +1,7 @@
 # lil butterfly 🦋 (native macOS)
 
+**Kavii is ready to install:** [open the download page](https://gajeradhrumil38.github.io/lil-butterfly-mac/) · [latest release](https://github.com/gajeradhrumil38/lil-butterfly-mac/releases/latest) · [installation guide](INSTALL.md)
+
 Same idea as before, rewritten as a native Swift/AppKit app instead of
 Electron — lighter, no npm/node install issues, and more precise control
 over the exact behavior that matters here: fully invisible almost all the
@@ -22,8 +24,9 @@ the center of your screen — waits about 10 seconds, then flies back out.
   visit. Meeting suppression is on by default for Zoom, Teams, and Meet
   apps; optional calendar-based meeting reminders are off by default. The
   first launch and every resume begin with an immediate welcome visit.
-- No network calls, no telemetry — everything is a local timer and some
-  Core Animation.
+- No telemetry or account tracking. The only optional network request checks
+  the public GitHub Releases endpoint so Kavii can tell you when an update is
+  available.
 
 ## Requirements
 
@@ -46,6 +49,14 @@ breakpoints in, etc.
 A 🦋 icon will appear in your menu bar. Click it → **"Show a butterfly
 now"** to test immediately instead of waiting.
 
+## Install a release
+
+For a normal installation, download the ZIP for your Mac from the
+[Kavii download page](https://gajeradhrumil38.github.io/lil-butterfly-mac/),
+unzip it, and drag LilButterfly.app into Applications. See
+[INSTALL.md](INSTALL.md) for Gatekeeper, updates, troubleshooting, and the
+maintainer release checklist.
+
 ## Customize
 
 - **Messages / frequency / quiet hours defaults**: `Sources/LilButterfly/Config.swift`
@@ -67,7 +78,7 @@ now"** to test immediately instead of waiting.
 ## Package as a real app
 
 ```bash
-./scripts/make_app_bundle.sh
+APP_VERSION=1.0.0 ./scripts/make_app_bundle.sh
 ```
 
 This builds a release binary and wraps it into `LilButterfly.app`, which you
@@ -76,6 +87,10 @@ never shows a Dock icon even before the app's own code runs.
 
 To make it launch automatically at login: System Settings → General → Login
 Items, and add `LilButterfly.app` once it's in `/Applications`.
+
+Tagged releases are built automatically for Apple Silicon and Intel by
+.github/workflows/release.yml. Push a tag such as v1.0.1 to publish both ZIPs
+and make the update available to existing installations.
 
 ## How it works, briefly
 
@@ -112,6 +127,9 @@ Items, and add `LilButterfly.app` once it's in `/Applications`.
   fly in and assemble the word "Kavii" themselves, then dissolve away.
 - `Config.swift` is a small `Codable` struct persisted as JSON in
   `Application Support`.
+- `UpdateChecker.swift` checks only the repository's latest public GitHub
+  Release and exposes an update item in the menu; it never downloads or
+  replaces the app automatically.
 
 ## Known rough edges / good next steps
 

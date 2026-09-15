@@ -11,6 +11,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let meetingCalendar = MeetingCalendar()
     private var meetingReminderTimer: Timer?
     private var remindedMeetingID: String?
+    private var latestRelease: GitHubRelease?
+    private lazy var updateChecker = UpdateChecker(currentVersion: installedVersion)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         rebuildOverlays()
@@ -19,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem.button?.title = "🦋"
         let menu = NSMenu(); menu.delegate = self; statusItem.menu = menu
         rebuildMenu(menu); scheduleNext(); updateMeetingReminderTimer()
+        checkForUpdates(showResult: false)
         if !config.hasStarted, fireVisit() {
             config.hasStarted = true
             ConfigStore.save(config)
@@ -87,6 +90,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         else if let nextFireDate { countdown = "Next visit in ~\(IntervalSliderView.formatted(max(0, nextFireDate.timeIntervalSinceNow)))" }
         else { countdown = "Next visit: not scheduled" }
         let countdownItem = NSMenuItem(title: countdown, action: nil, keyEquivalent: ""); countdownItem.isEnabled = false; menu.addItem(countdownItem)
+        if let latestRelease {
+            addItem(to: menu, title: "Update available — v\(latestRelease.version)", action: #selector(updateTapped))
+        } else {
+            addItem(to: menu, title: "Check for Updates…", action: #selector(checkForUpdatesTapped))
+        }
         addItem(to: menu, title: "Show a butterfly now", action: #selector(showNowTapped))
         addItem(to: menu, title: config.paused ? "Resume" : "Pause", action: #selector(togglePauseTapped)); menu.addItem(.separator())
         addFrequencyItem(to: menu, title: "Every 45–90 min (default)", min: 45, max: 90)
@@ -135,6 +143,55 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func showNowTapped() { _ = fireVisit(manualOverride: true) }
+    @objc private func checkForUpdatesTapped() { checkForUpdates(showResult: true) }
+    @objc private func updateTapped() {
+        guard let latestRelease else { return }
+        NSWorkspace.shared.open(latestRelease.htmlURL)
+    }
+
+    private var installedVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
+    }
+
+    private func checkForUpdates(showResult: Bool) {
+        updateChecker.check { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                switch result {
+                case .success(let release):
+                    self.latestRelease = release
+                    self.statusItem?.button?.title = release == nil ? "🦋" : "🦋↑"
+                    if let menu = self.statusItem?.menu { self.rebuildMenu(menu) }
+                    if showResult {
+                        if let release {
+                            let alert = NSAlert()
+                            alert.messageText = "A new Lil Butterfly is ready"
+                            alert.informativeText = "Version \(release.version) is available. Open the download page to install it."
+                            alert.addButton(withTitle: "Open Download Page")
+                            alert.addButton(withTitle: "Later")
+                            if alert.runModal() == .alertFirstButtonReturn {
+                                NSWorkspace.shared.open(release.htmlURL)
+                            }
+                        } else {
+                            self.showUpdateMessage("Lil Butterfly is up to date.")
+                        }
+                    }
+                case .failure(let error) where showResult:
+                    self.showUpdateMessage("Could not check for updates.\n\(error.localizedDescription)")
+                case .failure:
+                    break
+                }
+            }
+        }
+    }
+
+    private func showUpdateMessage(_ message: String) {
+        let alert = NSAlert()
+        alert.messageText = message
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+
     @objc private func togglePauseTapped() {
         let wasPaused = config.paused
         config.paused.toggle()

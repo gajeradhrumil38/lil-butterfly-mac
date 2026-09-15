@@ -5,14 +5,17 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+APP_VERSION="${APP_VERSION:-1.0.0}"
+
 swift build -c release
 
 APP="LilButterfly.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
 cp .build/release/LilButterfly "$APP/Contents/MacOS/LilButterfly"
+cp -R .build/release/LilButterfly_LilButterfly.bundle "$APP/Contents/LilButterfly_LilButterfly.bundle"
 
-cat > "$APP/Contents/Info.plist" <<'PLIST'
+cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -26,7 +29,13 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
-  <string>1.0</string>
+  <string>${APP_VERSION}</string>
+  <key>CFBundleVersion</key>
+  <string>${APP_VERSION}</string>
+  <key>CFBundleDisplayName</key>
+  <string>Lil Butterfly</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>13.0</string>
   <key>LSUIElement</key>
   <true/>
   <key>NSCalendarsUsageDescription</key>

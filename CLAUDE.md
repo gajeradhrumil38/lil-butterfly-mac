@@ -79,7 +79,8 @@ data, never visually verified).
   binary and wraps it into a minimal `LilButterfly.app` with `LSUIElement`
   set, for dragging into `/Applications`.
 
-No backend, no network calls, no telemetry. Everything is local.
+No backend or telemetry. The only network call is the optional public GitHub
+Releases update check; there are no analytics calls.
 
 ## Your first task
 
@@ -105,8 +106,8 @@ in the repo.
 
 - Keep it dependency-free. No third-party Swift packages needed for
   something this small — pure AppKit/Core Animation is intentional.
-- Don't add analytics, telemetry, or any network calls — 100% local is a
-  stated privacy feature, not an oversight.
+- Don't add analytics or telemetry. The optional GitHub Releases request is
+  reserved for update metadata and must not become a general data channel.
 - If you add configurable behavior, wire it into both the menu and
   `Config`, not just one.
 - Prefer small, testable changes — this is easy to visually verify by

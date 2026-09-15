@@ -77,8 +77,26 @@ struct Config: Codable {
                 "Glad we're figuring this out together",
                 "Founders forget to drink water too — sip time 💧",
                 "Standing desk moment? Just for a sec",
+                "How is your body feeling right now?",
+                "Uncurl your fingers from the keyboard",
+                "Take one slow sip and come back",
+                "Look at something across the room",
+                "Let your shoulders drop away from your ears",
+                "A tiny reset before the next thing",
+                "Open a window if the air feels stale",
+                "Notice one good thing around you",
+                "Let the sunlight find you for a minute",
+                "Step away from the desk and come back softer",
             ],
             morningMessages: [
+                "Good morning — let the day begin gently",
+                "Before the first big thing: breathe",
+                "Sunlight and water make a good team",
+                "What is one small win for this morning?",
+                "Let's make the next ten minutes easy",
+                "Your brain is warming up; no rush",
+                "A fresh page, not a performance",
+                "Open the curtains if you can",
                 "The work you're putting in adds up",
                 "This is what building something looks like",
                 "Every founder story has days like this",
@@ -89,6 +107,14 @@ struct Config: Codable {
                 "Morning momentum — here we go",
             ],
             middayMessages: [
+                "Midday check: shoulders, jaw, water",
+                "Give your eyes a view past the screen",
+                "Lunch does not have to be earned",
+                "A quiet minute can save the whole afternoon",
+                "How is your energy, honestly?",
+                "Go outside for three breaths if you can",
+                "Refill your water before the next task",
+                "The sun is high; you can pause too",
                 "Have you eaten something today?",
                 "A real lunch break sounds good right now",
                 "Feed yourself, you've earned it",
@@ -99,6 +125,14 @@ struct Config: Codable {
                 "Halfway-ish — how's your energy?",
             ],
             afternoonMessages: [
+                "The afternoon dip is not a personal failure",
+                "Stand up and let your spine remember its shape",
+                "Do the next small thing, not the whole day",
+                "You can reset without starting over",
+                "A little daylight might help",
+                "Rest your wrists and shake out your hands",
+                "You've been carrying a lot; soften your grip",
+                "One calm breath before the next decision",
                 "This is the part where you push through, gently",
                 "A quick stretch might help right about now",
                 "You're allowed to slow down for a minute",
@@ -114,6 +148,14 @@ struct Config: Codable {
                 "Desk-hunch check — shoulders back",
             ],
             eveningMessages: [
+                "Evening check: what can wait until tomorrow?",
+                "Close one loop, then let the rest be",
+                "The light is changing; let yourself slow down",
+                "You made it through another day",
+                "Leave a little energy for yourself tonight",
+                "A warm drink and a slower pace sound good",
+                "You do not have to finish everything tonight",
+                "Let the day end without grading yourself",
                 "Almost through today — nice work",
                 "Wrap-up time is close, hang in there",
                 "However today went, you showed up for it",
@@ -124,6 +166,14 @@ struct Config: Codable {
                 "Hard days don't erase how far you've already come",
             ],
             lateNightMessages: [
+                "The screen can wait; your eyes have been working hard",
+                "Late-night you deserves the same kindness as morning you",
+                "If you are tired, that is information",
+                "Save the last thought and rest",
+                "Your future self would love ten quiet minutes",
+                "Turn down the brightness and unclench your jaw",
+                "The best idea can survive until tomorrow",
+                "A bedtime is not a deadline you failed",
                 "Still going? Don't forget water either way",
                 "Late night — be extra gentle with yourself",
                 "Whenever you stop tonight is enough",
@@ -136,6 +186,14 @@ struct Config: Codable {
                 "Closing the laptop tonight is still a win",
             ],
             sleepMessages: [
+                "The tabs can stay open; you can close your eyes",
+                "Let the room get quiet around you",
+                "Rest is not falling behind",
+                "Your body is asking softly; listen if you can",
+                "Tomorrow can hold the next step",
+                "No more solving for tonight",
+                "A slow exhale, then let go",
+                "You are allowed to disappear into sleep",
                 "Suiii jaa 💤",
                 "I know you're working hard — take a nap",
                 "It's okay to close your eyes for a bit",
@@ -213,6 +271,31 @@ struct Config: Codable {
         }
         return pool.randomElement() ?? messages.randomElement() ?? "You've got this"
     }
+
+    /// Adds new bundled messages to an existing config without replacing
+    /// messages the user may have edited manually. This lets message updates
+    /// reach users who already have a config.json from an earlier version.
+    @discardableResult
+    mutating func mergeBundledMessages() -> Bool {
+        let bundled = Config.default
+        var changed = false
+
+        func merge(_ defaults: [String], into current: inout [String]) {
+            for message in defaults where !current.contains(message) {
+                current.append(message)
+                changed = true
+            }
+        }
+
+        merge(bundled.messages, into: &messages)
+        merge(bundled.morningMessages, into: &morningMessages)
+        merge(bundled.middayMessages, into: &middayMessages)
+        merge(bundled.afternoonMessages, into: &afternoonMessages)
+        merge(bundled.eveningMessages, into: &eveningMessages)
+        merge(bundled.lateNightMessages, into: &lateNightMessages)
+        merge(bundled.sleepMessages, into: &sleepMessages)
+        return changed
+    }
 }
 
 // Custom Codable conformance lives in an extension (rather than the primary
@@ -274,11 +357,14 @@ enum ConfigStore {
 
     static func load() -> Config {
         guard let data = try? Data(contentsOf: fileURL),
-              let config = try? JSONDecoder().decode(Config.self, from: data)
+              var config = try? JSONDecoder().decode(Config.self, from: data)
         else {
             let def = Config.default
             save(def)
             return def
+        }
+        if config.mergeBundledMessages() {
+            save(config)
         }
         return config
     }
