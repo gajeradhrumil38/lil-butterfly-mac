@@ -216,12 +216,12 @@ final class DockedOverlay {
             bubble.fadeIn()
             DispatchQueue.main.asyncAfter(deadline: .now() + restingSeconds) {
                 guard self.visitID == currentVisitID else { return }
-                butterfly.stopHover()
                 bubble.fadeOut {
                     self.closeWindow?.orderOut(nil)
                     self.closeWindow = nil
                     guard self.visitID == currentVisitID else { return }
                     bubble.removeFromSuperview()
+                    butterfly.stopHover()
                     self.isBusy = false
                 }
             }
@@ -242,15 +242,13 @@ final class DockedOverlay {
                         self.closeWindow = nil
                         guard self.visitID == currentVisitID else { return }
                         bubble.removeFromSuperview()
-                    }
-                    butterfly.stopHover()
-                    butterfly.flyPath(from: inward, to: self.dockPoint(margin: 40), duration: 1.2, easeIn: true) {
-                        guard self.visitID == currentVisitID else { return }
-                        self.closeWindow?.orderOut(nil)
-                        self.closeWindow = nil
-                        bubble.removeFromSuperview()
-                        self.isBusy = false
-                        self.updateHandleWindowFrame()
+                        butterfly.stopHover()
+                        butterfly.flyPath(from: inward, to: self.dockPoint(margin: 40), duration: 1.2, easeIn: true) {
+                            guard self.visitID == currentVisitID else { return }
+                            bubble.removeFromSuperview()
+                            self.isBusy = false
+                            self.updateHandleWindowFrame()
+                        }
                     }
                 }
             }

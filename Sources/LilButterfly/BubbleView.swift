@@ -83,6 +83,15 @@ final class BubbleView: NSView {
         let maxTextWidth = maxWidth - horizontalPadding
         label.preferredMaxLayoutWidth = maxTextWidth
 
+        // Two independent height estimates, and we take the taller: plain
+        // NSString.boundingRect() measures by font metrics alone and can
+        // come up short for text containing emoji (the messages use quite a
+        // few), since color-emoji glyphs don't always report the same
+        // advance width boundingRect assumes — while intrinsicContentSize
+        // goes through the label's real cell layout (the same path that
+        // will actually render it) but only reports a wrapped height once
+        // preferredMaxLayoutWidth is set, which we've just done above.
+        // Occasionally seeing the last line clipped was this mismatch.
         let font = label.font ?? NSFont.systemFont(ofSize: 13)
         let measured = (message as NSString).boundingRect(
             with: CGSize(width: maxTextWidth, height: .greatestFiniteMagnitude),
@@ -91,8 +100,9 @@ final class BubbleView: NSView {
         )
         let lineHeight = ceil(font.ascender - font.descender + font.leading)
         let maxTextHeight = lineHeight * CGFloat(label.maximumNumberOfLines)
+        let intrinsicHeight = label.intrinsicContentSize.height
         let textWidth = min(ceil(measured.width), maxTextWidth)
-        let textHeight = min(ceil(measured.height), maxTextHeight)
+        let textHeight = min(ceil(max(measured.height, intrinsicHeight)), maxTextHeight)
 
         let width = min(maxWidth, textWidth + horizontalPadding)
         let height = textHeight + 20

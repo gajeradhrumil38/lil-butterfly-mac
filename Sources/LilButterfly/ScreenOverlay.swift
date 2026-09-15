@@ -110,21 +110,19 @@ final class ScreenOverlay {
 
             let restingSeconds = 9.0
             DispatchQueue.main.asyncAfter(deadline: .now() + restingSeconds) {
-                // The card and butterfly leave as one little visit. Starting
-                // both animations together prevents a detached-looking
-                // message that fades away before its butterfly departs.
+                // The butterfly stays put — still hovering right next to its
+                // message — until the card has fully faded away, then
+                // leaves. It reads as the butterfly having delivered the
+                // message rather than abandoning it mid-fade.
                 bubble.fadeOut {
                     self.closeWindow?.orderOut(nil)
                     self.closeWindow = nil
                     bubble.removeFromSuperview()
-                }
-                butterfly.stopHover()
-                butterfly.flyPath(from: rest, to: off, duration: 1.2, easeIn: true) {
-                    self.closeWindow?.orderOut(nil)
-                    self.closeWindow = nil
-                    butterfly.removeFromSuperview()
-                    bubble.removeFromSuperview()
-                    self.isBusy = false
+                    butterfly.stopHover()
+                    butterfly.flyPath(from: rest, to: off, duration: 1.2, easeIn: true) {
+                        butterfly.removeFromSuperview()
+                        self.isBusy = false
+                    }
                 }
             }
         }
