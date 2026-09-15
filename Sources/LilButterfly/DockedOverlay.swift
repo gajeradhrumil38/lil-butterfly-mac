@@ -7,6 +7,7 @@ final class DockedOverlay {
     private var isBusy = false
     private var butterfly: ButterflyView?
     private var edge: ScreenEdge
+    private var visitID = 0
 
     init(screen: NSScreen, edge: ScreenEdge) {
         window = OverlayWindow(screen: screen)
@@ -15,6 +16,17 @@ final class DockedOverlay {
     }
 
     var isAvailable: Bool { !isBusy }
+
+    /// Stops this overlay completely before the app switches back to roaming
+    /// or rebuilds it after a display change.
+    func stop() {
+        visitID += 1
+        isBusy = false
+        window.contentView?.subviews.forEach { $0.removeFromSuperview() }
+        butterfly?.layer?.removeAllAnimations()
+        butterfly = nil
+        window.orderOut(nil)
+    }
 
     func parkNow(pinnedAssetIndex: Int?) { _ = ensureParked(pinnedAssetIndex: pinnedAssetIndex) }
 
@@ -41,6 +53,8 @@ final class DockedOverlay {
         guard !isBusy, let host = window.contentView,
               let butterfly = ensureParked(pinnedAssetIndex: pinnedAssetIndex) else { return }
         isBusy = true
+        visitID += 1
+        let currentVisitID = visitID
         let bubble = BubbleView(message: message)
         host.addSubview(bubble)
 
@@ -58,7 +72,9 @@ final class DockedOverlay {
             positionBubble(near: butterfly.layer?.position ?? dockPoint(margin: 40))
             bubble.fadeIn()
             DispatchQueue.main.asyncAfter(deadline: .now() + restingSeconds) {
+                guard self.visitID == currentVisitID else { return }
                 bubble.fadeOut {
+                    guard self.visitID == currentVisitID else { return }
                     bubble.removeFromSuperview()
                     self.isBusy = false
                 }
@@ -68,11 +84,15 @@ final class DockedOverlay {
             let inward = CGPoint(x: screenFrame.width * CGFloat.random(in: 0.3...0.7),
                                  y: screenFrame.height * CGFloat.random(in: 0.3...0.7))
             butterfly.flyPath(from: dockSpot, to: inward, duration: 1.2, easeIn: false) {
+                guard self.visitID == currentVisitID else { return }
                 positionBubble(near: inward)
                 bubble.fadeIn()
                 DispatchQueue.main.asyncAfter(deadline: .now() + restingSeconds) {
+                    guard self.visitID == currentVisitID else { return }
                     bubble.fadeOut {
+                        guard self.visitID == currentVisitID else { return }
                         butterfly.flyPath(from: inward, to: self.dockPoint(margin: 40), duration: 1.2, easeIn: true) {
+                            guard self.visitID == currentVisitID else { return }
                             bubble.removeFromSuperview()
                             self.isBusy = false
                         }

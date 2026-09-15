@@ -18,14 +18,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func rebuildOverlays() {
+        dockedOverlay?.stop()
+        dockedOverlay = nil
         if config.mode == "docked" {
             overlays = []
             if let main = NSScreen.main {
                 let docked = DockedOverlay(screen: main, edge: ScreenEdge(rawValue: config.dockEdge) ?? .right)
                 docked.parkNow(pinnedAssetIndex: config.pinnedAssetIndex); dockedOverlay = docked
-            } else { dockedOverlay = nil }
+            }
         } else {
-            dockedOverlay = nil; overlays = NSScreen.screens.map { ScreenOverlay(screen: $0) }
+            overlays = NSScreen.screens.map { ScreenOverlay(screen: $0) }
         }
     }
 
