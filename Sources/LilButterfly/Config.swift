@@ -12,6 +12,9 @@ struct Config: Codable {
     var dockEdge: String        // "left" | "right" | "top" | "bottom"
     var pinnedAssetIndex: Int?  // nil = random each visit
     var customIntervalSeconds: Double?  // nil = use minMinutes...maxMinutes; set by the menu's interval slider
+    var suppressDuringMeetings: Bool
+    var meetingReminderEnabled: Bool
+    var meetingReminderMinutes: Int
 
     static var `default`: Config {
         Config(
@@ -37,18 +40,42 @@ struct Config: Codable {
                 "Go get some fresh air if you can",
                 "You're allowed to take a short break",
                 "Good posture check — how's it looking?",
+                "You don't have to solve everything right now",
+                "One small thing at a time, lovely",
+                "Your best today can look different from yesterday",
+                "The work is important, but so are you",
+                "A tired brain deserves kindness, not criticism",
+                "You are allowed to be proud of how far you've come",
+                "Pause the overthinking — come back to this moment",
+                "You can be ambitious and still take a break",
+                "Your feelings are information, not instructions",
+                "Breathe. This moment is manageable",
+                "You don't need perfect conditions to make progress",
+                "Future you will be grateful for this little pause",
+                "Close one tab in your mind and take one breath",
+                "You are doing real work, even when it feels invisible",
+                "Drink water, soften your shoulders, keep going gently",
+                "It is okay if today is a slower day",
+                "You are more than your productivity",
+                "A tiny reset can change the shape of the afternoon",
+                "You have handled hard days before",
+                "Rest is part of the plan, not a failure of it",
             ],
             mode: "roaming",
             dockEdge: "right",
             pinnedAssetIndex: nil,
-            customIntervalSeconds: nil
+            customIntervalSeconds: nil,
+            suppressDuringMeetings: true,
+            meetingReminderEnabled: false,
+            meetingReminderMinutes: 15
         )
     }
 
     init(
         minMinutes: Int, maxMinutes: Int, quietHoursEnabled: Bool, quietHoursStart: Int,
         quietHoursEnd: Int, paused: Bool, messages: [String], mode: String, dockEdge: String,
-        pinnedAssetIndex: Int?, customIntervalSeconds: Double?
+        pinnedAssetIndex: Int?, customIntervalSeconds: Double?, suppressDuringMeetings: Bool,
+        meetingReminderEnabled: Bool, meetingReminderMinutes: Int
     ) {
         self.minMinutes = minMinutes
         self.maxMinutes = maxMinutes
@@ -61,11 +88,15 @@ struct Config: Codable {
         self.dockEdge = dockEdge
         self.pinnedAssetIndex = pinnedAssetIndex
         self.customIntervalSeconds = customIntervalSeconds
+        self.suppressDuringMeetings = suppressDuringMeetings
+        self.meetingReminderEnabled = meetingReminderEnabled
+        self.meetingReminderMinutes = meetingReminderMinutes
     }
 
     private enum CodingKeys: String, CodingKey {
         case minMinutes, maxMinutes, quietHoursEnabled, quietHoursStart, quietHoursEnd
         case paused, messages, mode, dockEdge, pinnedAssetIndex, customIntervalSeconds
+        case suppressDuringMeetings, meetingReminderEnabled, meetingReminderMinutes
     }
 
     init(from decoder: Decoder) throws {
@@ -81,6 +112,9 @@ struct Config: Codable {
         dockEdge = try c.decodeIfPresent(String.self, forKey: .dockEdge) ?? "right"
         pinnedAssetIndex = try c.decodeIfPresent(Int.self, forKey: .pinnedAssetIndex)
         customIntervalSeconds = try c.decodeIfPresent(Double.self, forKey: .customIntervalSeconds)
+        suppressDuringMeetings = try c.decodeIfPresent(Bool.self, forKey: .suppressDuringMeetings) ?? true
+        meetingReminderEnabled = try c.decodeIfPresent(Bool.self, forKey: .meetingReminderEnabled) ?? false
+        meetingReminderMinutes = try c.decodeIfPresent(Int.self, forKey: .meetingReminderMinutes) ?? 15
     }
 
     func isQuietHour(at date: Date = Date()) -> Bool {

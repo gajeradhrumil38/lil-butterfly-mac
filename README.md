@@ -19,7 +19,8 @@ the center of your screen — waits about 10 seconds, then flies back out.
   switch between Roaming and Docked modes, pick a dock edge and a specific
   butterfly design (or leave it randomized), and toggle quiet hours
   (default: off 11pm–7am). The menu always shows how long until the next
-  visit.
+  visit. Meeting suppression is on by default for Zoom, Teams, and Meet
+  apps; optional calendar-based meeting reminders are off by default.
 - No network calls, no telemetry — everything is a local timer and some
   Core Animation.
 
@@ -98,15 +99,22 @@ Items, and add `LilButterfly.app` once it's in `/Applications`.
 - `DockedOverlay.swift` is the dock-mode counterpart to `ScreenOverlay.swift`
   — keeps one butterfly permanently parked at a configurable edge instead
   of flying fully on/off screen between visits.
-- `BubbleView.swift` is the small rounded message bubble with a simple fade
-  in/out.
+- `BubbleView.swift` is the small frosted message card with a close mark and
+  directional tail pointing toward the butterfly.
+- `MeetingDetector.swift` suppresses visits while Zoom, Teams, or a standalone
+  Meet app is running. Browser-tab detection is intentionally not enabled;
+  use Pause for Google Meet in Chrome or Safari.
+- `MeetingCalendar.swift` optionally reads local Calendar events, only after
+  calendar reminders are enabled, to show a butterfly 15 minutes before a
+  video meeting.
 - `Config.swift` is a small `Codable` struct persisted as JSON in
   `Application Support`.
 
 ## Known rough edges / good next steps
 
-- Butterfly wing shapes are hand-authored bezier curves — good enough to
-  read clearly, but could be swapped for real illustration/sprite art.
+- Google Meet in a regular Chrome/Safari tab cannot be identified without
+  Accessibility permission; the menu explains that Pause should be used for
+  those meetings.
 - No global keyboard shortcut yet for an on-demand "I need a break" trigger.
 - No in-app settings window — everything is menu-bar-item or manual
   config-file edits right now.

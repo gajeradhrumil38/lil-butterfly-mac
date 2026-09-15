@@ -7,6 +7,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var config: Config = ConfigStore.load()
     private var scheduleTimer: Timer?
     private var nextFireDate: Date?
+    private let meetingCalendar = MeetingCalendar()
+    private var meetingReminderTimer: Timer?
+    private var remindedMeetingID: String?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         rebuildOverlays()
@@ -14,7 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem.button?.title = "🦋"
         let menu = NSMenu(); menu.delegate = self; statusItem.menu = menu
-        rebuildMenu(menu); scheduleNext()
+        rebuildMenu(menu); scheduleNext(); updateMeetingReminderTimer()
     }
 
     @objc private func rebuildOverlays() {
@@ -39,6 +42,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func fireVisit() {
         guard !config.paused, !config.isQuietHour() else { return }
+        guard !config.suppressDuringMeetings ||
+                (!MeetingDetector.isMeetingAppActive && !meetingCalendar.isVideoMeetingActive()) else { return }
         let message = config.randomMessage()
         if config.mode == "docked" { dockedOverlay?.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex) }
         else if let overlay = overlays.filter({ $0.isAvailable }).randomElement() { overlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex) }
@@ -74,6 +79,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         for (index, name) in WingAssets.names().enumerated() { addAssetItem(to: assetMenu, title: name, index: index) }
         let assetItem = NSMenuItem(title: "Butterfly Design", action: nil, keyEquivalent: ""); assetItem.submenu = assetMenu; menu.addItem(assetItem); menu.addItem(.separator())
         addItem(to: menu, title: "Quiet hours \(config.quietHoursEnabled ? "(\(config.quietHoursStart):00–\(config.quietHoursEnd):00) ✓" : "(off)")", action: #selector(toggleQuietHoursTapped)); menu.addItem(.separator())
+        addItem(to: menu, title: "Hide during Zoom / Teams / Meet \(config.suppressDuringMeetings ? "✓" : "(off)")", action: #selector(toggleMeetingSuppressionTapped))
+        addItem(to: menu, title: "Meeting reminder (15 min before) \(config.meetingReminderEnabled ? "✓" : "(off)")", action: #selector(toggleMeetingReminderTapped))
+        let meetingNote = NSMenuItem(title: "Google Meet in Chrome/Safari: use Pause", action: nil, keyEquivalent: "")
+        meetingNote.isEnabled = false
+        menu.addItem(meetingNote)
+        menu.addItem(.separator())
         addItem(to: menu, title: "Quit", action: #selector(quitTapped), keyEquivalent: "q")
     }
 
@@ -98,5 +109,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func dockEdgeTapped(_ sender: NSMenuItem) { guard let raw = sender.representedObject as? String, let edge = ScreenEdge(rawValue: raw) else { return }; config.dockEdge = raw; ConfigStore.save(config); dockedOverlay?.updateEdge(edge) }
     @objc private func assetTapped(_ sender: NSMenuItem) { guard let index = sender.representedObject as? Int else { return }; config.pinnedAssetIndex = index == -1 ? nil : index; ConfigStore.save(config) }
     @objc private func toggleQuietHoursTapped() { config.quietHoursEnabled.toggle(); ConfigStore.save(config) }
+    @objc private func toggleMeetingSuppressionTapped() { config.suppressDuringMeetings.toggle(); ConfigStore.save(config) }
+    @objc private func toggleMeetingReminderTapped() {
+        config.meetingReminderEnabled.toggle()
+        ConfigStore.save(config)
+        updateMeetingReminderTimer()
+    }
+
+    private func updateMeetingReminderTimer() {
+        meetingReminderTimer?.invalidate()
+        meetingReminderTimer = nil
+        remindedMeetingID = nil
+        guard config.meetingReminderEnabled else { return }
+        meetingCalendar.requestAccess { [weak self] granted in
+            guard let self, granted else { return }
+            self.meetingReminderTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+                self?.checkMeetingReminder()
+            }
+            self.checkMeetingReminder()
+        }
+    }
+
+    private func checkMeetingReminder() {
+        guard config.meetingReminderEnabled,
+              let meeting = meetingCalendar.nextVideoMeeting() else { return }
+        let secondsUntilMeeting = meeting.startDate.timeIntervalSinceNow
+        let reminderWindow = Double(config.meetingReminderMinutes * 60)
+        guard secondsUntilMeeting > 0, secondsUntilMeeting <= reminderWindow,
+              remindedMeetingID != meeting.identifier else { return }
+        remindedMeetingID = meeting.identifier
+        fireVisit()
+    }
     @objc private func quitTapped() { NSApplication.shared.terminate(nil) }
 }

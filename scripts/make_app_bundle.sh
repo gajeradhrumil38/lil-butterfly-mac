@@ -29,6 +29,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <string>1.0</string>
   <key>LSUIElement</key>
   <true/>
+  <key>NSCalendarsUsageDescription</key>
+  <string>Lil Butterfly uses your calendar only when you enable meeting reminders.</string>
 </dict>
 </plist>
 PLIST
