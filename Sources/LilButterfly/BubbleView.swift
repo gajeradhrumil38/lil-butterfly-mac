@@ -61,7 +61,11 @@ final class BubbleView: NSView {
         label.isEditable = false
         label.isSelectable = false
         label.lineBreakMode = .byWordWrapping
-        label.maximumNumberOfLines = 4
+        label.usesSingleLineMode = false
+        label.cell?.wraps = true
+        // Let the card grow for longer messages instead of clipping after a
+        // fixed number of lines.
+        label.maximumNumberOfLines = 0
         label.alignment = .left
         label.alphaValue = 0 // revealed after the typing-dots beat, see revealText()
         addSubview(label)
@@ -90,18 +94,23 @@ final class BubbleView: NSView {
         // preferredMaxLayoutWidth is set, which we've just done above.
         // Occasionally seeing the last line clipped was this mismatch.
         let font = label.font ?? NSFont.systemFont(ofSize: 13)
-        let measured = (message as NSString).boundingRect(
-            with: CGSize(width: maxTextWidth, height: .greatestFiniteMagnitude),
+        let naturalMeasured = (message as NSString).boundingRect(
+            with: CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude),
             options: [.usesLineFragmentOrigin, .usesFontLeading],
             attributes: [.font: font]
         )
-        let lineHeight = ceil(font.ascender - font.descender + font.leading)
-        let maxTextHeight = lineHeight * CGFloat(label.maximumNumberOfLines)
         let intrinsicHeight = label.intrinsicContentSize.height
-        let textWidth = min(ceil(measured.width), maxTextWidth)
-        let textHeight = min(ceil(max(measured.height, intrinsicHeight)), maxTextHeight)
-
-        let width = min(maxWidth, textWidth + horizontalPadding)
+        // Pick the compact width from the natural one-line measurement, then
+        // measure again at that final width. The second pass is important:
+        // resizing a medium-length sentence can create an extra wrapped line.
+        let width = min(maxWidth, max(150, ceil(naturalMeasured.width) + horizontalPadding))
+        let textWidth = width - horizontalPadding
+        let measured = (message as NSString).boundingRect(
+            with: CGSize(width: textWidth, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: [.font: font]
+        )
+        let textHeight = ceil(max(measured.height, intrinsicHeight))
         let height = textHeight + 20
         frame = CGRect(x: 0, y: 0, width: width, height: height)
         effectView.frame = CGRect(x: 0, y: 0, width: width, height: height)
