@@ -71,6 +71,7 @@ final class DockedOverlay {
         let restingSeconds = 9.0
         if Bool.random() {
             positionBubble(near: butterfly.layer?.position ?? dockPoint(margin: 40))
+            butterfly.alphaValue = 1
             bubble.fadeIn()
             DispatchQueue.main.asyncAfter(deadline: .now() + restingSeconds) {
                 guard self.visitID == currentVisitID else { return }
@@ -87,16 +88,18 @@ final class DockedOverlay {
             butterfly.flyPath(from: dockSpot, to: inward, duration: 1.2, easeIn: false) {
                 guard self.visitID == currentVisitID else { return }
                 positionBubble(near: inward)
+                butterfly.alphaValue = 1
                 bubble.fadeIn()
                 DispatchQueue.main.asyncAfter(deadline: .now() + restingSeconds) {
                     guard self.visitID == currentVisitID else { return }
                     bubble.fadeOut {
                         guard self.visitID == currentVisitID else { return }
-                        butterfly.flyPath(from: inward, to: self.dockPoint(margin: 40), duration: 1.2, easeIn: true) {
-                            guard self.visitID == currentVisitID else { return }
-                            bubble.removeFromSuperview()
-                            self.isBusy = false
-                        }
+                        bubble.removeFromSuperview()
+                    }
+                    butterfly.flyPath(from: inward, to: self.dockPoint(margin: 40), duration: 1.2, easeIn: true) {
+                        guard self.visitID == currentVisitID else { return }
+                        bubble.removeFromSuperview()
+                        self.isBusy = false
                     }
                 }
             }
