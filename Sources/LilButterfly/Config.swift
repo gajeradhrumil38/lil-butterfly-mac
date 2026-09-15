@@ -8,6 +8,10 @@ struct Config: Codable {
     var quietHoursEnd: Int
     var paused: Bool
     var messages: [String]
+    var mode: String            // "roaming" | "docked"
+    var dockEdge: String        // "left" | "right" | "top" | "bottom"
+    var pinnedAssetIndex: Int?  // nil = random each visit
+    var customIntervalSeconds: Double?  // nil = use minMinutes...maxMinutes; set by the menu's interval slider
 
     static var `default`: Config {
         Config(
@@ -33,8 +37,50 @@ struct Config: Codable {
                 "Go get some fresh air if you can",
                 "You're allowed to take a short break",
                 "Good posture check — how's it looking?",
-            ]
+            ],
+            mode: "roaming",
+            dockEdge: "right",
+            pinnedAssetIndex: nil,
+            customIntervalSeconds: nil
         )
+    }
+
+    init(
+        minMinutes: Int, maxMinutes: Int, quietHoursEnabled: Bool, quietHoursStart: Int,
+        quietHoursEnd: Int, paused: Bool, messages: [String], mode: String, dockEdge: String,
+        pinnedAssetIndex: Int?, customIntervalSeconds: Double?
+    ) {
+        self.minMinutes = minMinutes
+        self.maxMinutes = maxMinutes
+        self.quietHoursEnabled = quietHoursEnabled
+        self.quietHoursStart = quietHoursStart
+        self.quietHoursEnd = quietHoursEnd
+        self.paused = paused
+        self.messages = messages
+        self.mode = mode
+        self.dockEdge = dockEdge
+        self.pinnedAssetIndex = pinnedAssetIndex
+        self.customIntervalSeconds = customIntervalSeconds
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case minMinutes, maxMinutes, quietHoursEnabled, quietHoursStart, quietHoursEnd
+        case paused, messages, mode, dockEdge, pinnedAssetIndex, customIntervalSeconds
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        minMinutes = try c.decode(Int.self, forKey: .minMinutes)
+        maxMinutes = try c.decode(Int.self, forKey: .maxMinutes)
+        quietHoursEnabled = try c.decode(Bool.self, forKey: .quietHoursEnabled)
+        quietHoursStart = try c.decode(Int.self, forKey: .quietHoursStart)
+        quietHoursEnd = try c.decode(Int.self, forKey: .quietHoursEnd)
+        paused = try c.decode(Bool.self, forKey: .paused)
+        messages = try c.decode([String].self, forKey: .messages)
+        mode = try c.decodeIfPresent(String.self, forKey: .mode) ?? "roaming"
+        dockEdge = try c.decodeIfPresent(String.self, forKey: .dockEdge) ?? "right"
+        pinnedAssetIndex = try c.decodeIfPresent(Int.self, forKey: .pinnedAssetIndex)
+        customIntervalSeconds = try c.decodeIfPresent(Double.self, forKey: .customIntervalSeconds)
     }
 
     func isQuietHour(at date: Date = Date()) -> Bool {
@@ -44,12 +90,12 @@ struct Config: Codable {
         if quietHoursStart < quietHoursEnd {
             return hour >= quietHoursStart && hour < quietHoursEnd
         } else {
-            // wraps past midnight, e.g. 23 -> 7
             return hour >= quietHoursStart || hour < quietHoursEnd
         }
     }
 
     func randomIntervalSeconds() -> TimeInterval {
+        if let customIntervalSeconds { return customIntervalSeconds }
         let minSec = Double(minMinutes) * 60
         let maxSec = Double(maxMinutes) * 60
         return Double.random(in: minSec...maxSec)
