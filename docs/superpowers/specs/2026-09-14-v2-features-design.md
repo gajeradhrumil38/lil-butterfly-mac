@@ -60,6 +60,10 @@ This was chosen over `CAKeyframeAnimation.rotationMode = .rotateAuto` (Core Anim
 
 `BubbleView` replaces its flat background layer with an `NSVisualEffectView` (`material: .hudWindow`, `blendingMode: .withinWindow`, `state: .active`) sized/cornered the same way the current bubble is, with the text label layered on top in light-colored text for contrast. `.hudWindow` is a consistently dark, blurred, translucent material regardless of system light/dark mode — matches the "dark frosted" option picked during design. The existing `NSAnimationContext`-based fade in/out logic is unchanged; it now fades the effect view's `alphaValue` instead of a flat `NSView`'s.
 
+## Addendum: testing-friendly interval slider
+
+Added during planning (not part of the original four features, but small enough to fold in rather than spec separately): the menu's frequency section gains a logarithmic `NSSlider` (10 sec – 3 hours), hosted directly as a custom `NSMenuItem.view`, so the visit interval can be set to an exact value — in particular, shortened for testing — without hand-editing `config.json`. `Config` gains `customIntervalSeconds: Double?`; when set, it overrides the `minMinutes...maxMinutes` random range entirely. Picking one of the three existing frequency presets clears it (and vice versa — moving the slider means none of the three presets are "active" anymore, reflected by their checkmarks). See the implementation plan for exact behavior.
+
 ## Non-goals
 
 - No changes to the roaming mode's existing behavior or timing.
