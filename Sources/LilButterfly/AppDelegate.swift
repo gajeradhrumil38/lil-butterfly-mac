@@ -32,7 +32,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         dockedOverlay = nil
         if config.mode == "docked" {
             if let main = preferredScreen {
-                let docked = DockedOverlay(screen: main, edge: ScreenEdge(rawValue: config.dockEdge) ?? .right)
+                let docked = DockedOverlay(
+                    screen: main,
+                    edge: ScreenEdge(rawValue: config.dockEdge) ?? .right,
+                    positionFraction: config.dockPositionFraction
+                )
+                docked.onPositionChanged = { [weak self] fraction in
+                    guard let self else { return }
+                    self.config.dockPositionFraction = fraction
+                    ConfigStore.save(self.config)
+                }
                 docked.parkNow(pinnedAssetIndex: config.pinnedAssetIndex); dockedOverlay = docked
             }
         } else {
@@ -129,7 +138,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func frequencyTapped(_ sender: NSMenuItem) { guard let pair = sender.representedObject as? [Int], pair.count == 2 else { return }; config.minMinutes = pair[0]; config.maxMinutes = pair[1]; config.customIntervalSeconds = nil; ConfigStore.save(config); scheduleNext() }
     @objc private func intervalSliderMoved(_ sender: NSSlider) { guard let view = sender.superview as? IntervalSliderView else { return }; config.customIntervalSeconds = view.sliderMoved(); ConfigStore.save(config); scheduleNext() }
     @objc private func modeTapped(_ sender: NSMenuItem) { guard let mode = sender.representedObject as? String, mode != config.mode else { return }; config.mode = mode; ConfigStore.save(config); rebuildOverlays() }
-    @objc private func dockEdgeTapped(_ sender: NSMenuItem) { guard let raw = sender.representedObject as? String, let edge = ScreenEdge(rawValue: raw) else { return }; config.dockEdge = raw; ConfigStore.save(config); dockedOverlay?.updateEdge(edge) }
+    @objc private func dockEdgeTapped(_ sender: NSMenuItem) { guard let raw = sender.representedObject as? String, let edge = ScreenEdge(rawValue: raw) else { return }; config.dockEdge = raw; config.dockPositionFraction = nil; ConfigStore.save(config); dockedOverlay?.updateEdge(edge, positionFraction: nil) }
     @objc private func assetTapped(_ sender: NSMenuItem) { guard let index = sender.representedObject as? Int else { return }; config.pinnedAssetIndex = index == -1 ? nil : index; ConfigStore.save(config) }
     @objc private func toggleQuietHoursTapped() { config.quietHoursEnabled.toggle(); ConfigStore.save(config) }
     @objc private func toggleMeetingSuppressionTapped() { config.suppressDuringMeetings.toggle(); ConfigStore.save(config) }

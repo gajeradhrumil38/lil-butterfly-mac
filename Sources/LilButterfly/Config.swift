@@ -16,6 +16,11 @@ struct Config: Codable {
     var meetingReminderEnabled: Bool
     var meetingReminderMinutes: Int
     var hasStarted: Bool
+    /// Where the docked butterfly sits along its edge: the fraction (0...1)
+    /// along screen height (left/right edges) or screen width (top/bottom
+    /// edges), set by dragging it. nil = pick a random spot each time it
+    /// parks, as before.
+    var dockPositionFraction: Double?
 
     static var `default`: Config {
         Config(
@@ -69,57 +74,9 @@ struct Config: Codable {
             suppressDuringMeetings: true,
             meetingReminderEnabled: false,
             meetingReminderMinutes: 15,
-            hasStarted: false
+            hasStarted: false,
+            dockPositionFraction: nil
         )
-    }
-
-    init(
-        minMinutes: Int, maxMinutes: Int, quietHoursEnabled: Bool, quietHoursStart: Int,
-        quietHoursEnd: Int, paused: Bool, messages: [String], mode: String, dockEdge: String,
-        pinnedAssetIndex: Int?, customIntervalSeconds: Double?, suppressDuringMeetings: Bool,
-        meetingReminderEnabled: Bool, meetingReminderMinutes: Int, hasStarted: Bool
-    ) {
-        self.minMinutes = minMinutes
-        self.maxMinutes = maxMinutes
-        self.quietHoursEnabled = quietHoursEnabled
-        self.quietHoursStart = quietHoursStart
-        self.quietHoursEnd = quietHoursEnd
-        self.paused = paused
-        self.messages = messages
-        self.mode = mode
-        self.dockEdge = dockEdge
-        self.pinnedAssetIndex = pinnedAssetIndex
-        self.customIntervalSeconds = customIntervalSeconds
-        self.suppressDuringMeetings = suppressDuringMeetings
-        self.meetingReminderEnabled = meetingReminderEnabled
-        self.meetingReminderMinutes = meetingReminderMinutes
-        self.hasStarted = hasStarted
-    }
-
-    private enum CodingKeys: String, CodingKey {
-        case minMinutes, maxMinutes, quietHoursEnabled, quietHoursStart, quietHoursEnd
-        case paused, messages, mode, dockEdge, pinnedAssetIndex, customIntervalSeconds
-        case suppressDuringMeetings, meetingReminderEnabled, meetingReminderMinutes
-        case hasStarted
-    }
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        minMinutes = try c.decode(Int.self, forKey: .minMinutes)
-        maxMinutes = try c.decode(Int.self, forKey: .maxMinutes)
-        quietHoursEnabled = try c.decode(Bool.self, forKey: .quietHoursEnabled)
-        quietHoursStart = try c.decode(Int.self, forKey: .quietHoursStart)
-        quietHoursEnd = try c.decode(Int.self, forKey: .quietHoursEnd)
-        paused = try c.decode(Bool.self, forKey: .paused)
-        messages = try c.decode([String].self, forKey: .messages)
-        mode = try c.decodeIfPresent(String.self, forKey: .mode) ?? "roaming"
-        dockEdge = try c.decodeIfPresent(String.self, forKey: .dockEdge) ?? "right"
-        pinnedAssetIndex = try c.decodeIfPresent(Int.self, forKey: .pinnedAssetIndex)
-        customIntervalSeconds = try c.decodeIfPresent(Double.self, forKey: .customIntervalSeconds)
-        suppressDuringMeetings = try c.decodeIfPresent(Bool.self, forKey: .suppressDuringMeetings) ?? true
-        meetingReminderEnabled = try c.decodeIfPresent(Bool.self, forKey: .meetingReminderEnabled) ?? false
-        meetingReminderMinutes = try c.decodeIfPresent(Int.self, forKey: .meetingReminderMinutes) ?? 15
-        hasStarted = try c.decodeIfPresent(Bool.self, forKey: .hasStarted) ?? false
     }
 
     func isQuietHour(at date: Date = Date()) -> Bool {
@@ -142,6 +99,42 @@ struct Config: Codable {
 
     func randomMessage() -> String {
         messages.randomElement() ?? "You've got this"
+    }
+}
+
+// Custom Codable conformance lives in an extension (rather than the primary
+// declaration) specifically so the compiler-synthesized memberwise
+// initializer above stays available — declaring init(from:) directly in the
+// struct body would suppress it, requiring a hand-maintained duplicate init
+// that grows every time a field is added.
+extension Config {
+    private enum CodingKeys: String, CodingKey {
+        case minMinutes, maxMinutes, quietHoursEnabled, quietHoursStart, quietHoursEnd
+        case paused, messages, mode, dockEdge, pinnedAssetIndex, customIntervalSeconds
+        case suppressDuringMeetings, meetingReminderEnabled, meetingReminderMinutes
+        case hasStarted, dockPositionFraction
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            minMinutes: try c.decode(Int.self, forKey: .minMinutes),
+            maxMinutes: try c.decode(Int.self, forKey: .maxMinutes),
+            quietHoursEnabled: try c.decode(Bool.self, forKey: .quietHoursEnabled),
+            quietHoursStart: try c.decode(Int.self, forKey: .quietHoursStart),
+            quietHoursEnd: try c.decode(Int.self, forKey: .quietHoursEnd),
+            paused: try c.decode(Bool.self, forKey: .paused),
+            messages: try c.decode([String].self, forKey: .messages),
+            mode: try c.decodeIfPresent(String.self, forKey: .mode) ?? "roaming",
+            dockEdge: try c.decodeIfPresent(String.self, forKey: .dockEdge) ?? "right",
+            pinnedAssetIndex: try c.decodeIfPresent(Int.self, forKey: .pinnedAssetIndex),
+            customIntervalSeconds: try c.decodeIfPresent(Double.self, forKey: .customIntervalSeconds),
+            suppressDuringMeetings: try c.decodeIfPresent(Bool.self, forKey: .suppressDuringMeetings) ?? true,
+            meetingReminderEnabled: try c.decodeIfPresent(Bool.self, forKey: .meetingReminderEnabled) ?? false,
+            meetingReminderMinutes: try c.decodeIfPresent(Int.self, forKey: .meetingReminderMinutes) ?? 15,
+            hasStarted: try c.decodeIfPresent(Bool.self, forKey: .hasStarted) ?? false,
+            dockPositionFraction: try c.decodeIfPresent(Double.self, forKey: .dockPositionFraction)
+        )
     }
 }
 
