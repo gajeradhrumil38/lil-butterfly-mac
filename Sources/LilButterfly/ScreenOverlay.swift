@@ -105,6 +105,7 @@ final class ScreenOverlay {
             guard let self else { return }
             positionBubble(near: rest)
             butterfly.alphaValue = 1
+            butterfly.startHover()
             bubble.fadeIn()
 
             let restingSeconds = 9.0
@@ -117,6 +118,7 @@ final class ScreenOverlay {
                     self.closeWindow = nil
                     bubble.removeFromSuperview()
                 }
+                butterfly.stopHover()
                 butterfly.flyPath(from: rest, to: off, duration: 1.2, easeIn: true) {
                     self.closeWindow?.orderOut(nil)
                     self.closeWindow = nil

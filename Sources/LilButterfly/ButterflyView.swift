@@ -87,6 +87,42 @@ final class ButterflyView: NSView {
         rightWing.add(flutterDelayed, forKey: "flutter")
     }
 
+    /// A gentle idle bob + sway while parked next to a message, so it reads
+    /// as still lightly flying rather than freezing in place. Uses a
+    /// different transform component (translation) than flyPath's
+    /// tilt (rotation.z), so the two never conflict — and by the time this
+    /// starts, flyPath's own "flight"/"tilt" keyframe animations have
+    /// already auto-removed themselves (their duration has elapsed), so the
+    /// layer is idle and ready for this.
+    func startHover() {
+        guard let layer else { return }
+        let bob = CABasicAnimation(keyPath: "transform.translation.y")
+        bob.fromValue = -2
+        bob.toValue = 3
+        bob.duration = 1.6
+        bob.autoreverses = true
+        bob.repeatCount = .infinity
+        bob.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+
+        let sway = CABasicAnimation(keyPath: "transform.rotation.z")
+        sway.fromValue = -0.05
+        sway.toValue = 0.05
+        sway.duration = 1.9
+        sway.autoreverses = true
+        sway.repeatCount = .infinity
+        sway.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+
+        layer.add(bob, forKey: "hoverBob")
+        layer.add(sway, forKey: "hoverSway")
+    }
+
+    /// Stops the idle hover — call before starting a new flyPath, since
+    /// flyPath's own tilt animation targets the same rotation.z component.
+    func stopHover() {
+        layer?.removeAnimation(forKey: "hoverBob")
+        layer?.removeAnimation(forKey: "hoverSway")
+    }
+
     /// Moves the view's layer from `from` to `to` (in superlayer/window
     /// coordinates) with easing and a perpendicular "wobble" so the path
     /// feels alive rather than mechanical. Sets the final model position

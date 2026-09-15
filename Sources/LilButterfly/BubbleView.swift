@@ -5,7 +5,9 @@ final class BubbleView: NSView {
     private let effectView = NSVisualEffectView()
     private let label = NSTextField(labelWithString: "")
     private let tail = NSView()
+    private let dotsContainer = NSView()
     private var didDismiss = false
+    private var didRevealText = false
 
     /// The only interactive region gets its own tiny window so the
     /// full-screen overlay can remain click-through. Inset evenly from the
@@ -64,6 +66,7 @@ final class BubbleView: NSView {
         label.lineBreakMode = .byWordWrapping
         label.maximumNumberOfLines = 3
         label.alignment = .left
+        label.alphaValue = 0 // revealed after the typing-dots beat, see revealText()
         addSubview(label)
 
         // NSTextField's sizeToFit() doesn't reliably account for
@@ -97,9 +100,59 @@ final class BubbleView: NSView {
         effectView.frame = CGRect(x: 0, y: 0, width: width, height: height)
         effectView.layer?.sublayers?.first(where: { $0 is CAGradientLayer })?.frame = effectView.bounds
         label.frame = CGRect(x: 14, y: 10, width: width - horizontalPadding, height: textHeight)
+
+        setUpDots(in: label.frame)
+        addSubview(dotsContainer)
     }
 
     required init?(coder: NSCoder) { fatalError("unavailable") }
+
+    /// A brief "..." pulse shown in place of the text, like a chat message
+    /// arriving, before revealText() cross-fades to the real message. Sized
+    /// to sit within the same box the label already occupies, so the card
+    /// doesn't resize/pop when the text appears.
+    private func setUpDots(in labelFrame: CGRect) {
+        let dotSize: CGFloat = 5
+        let spacing: CGFloat = 5
+        dotsContainer.frame = CGRect(
+            x: labelFrame.minX, y: labelFrame.minY,
+            width: dotSize * 3 + spacing * 2, height: labelFrame.height
+        )
+        dotsContainer.wantsLayer = true
+        for i in 0..<3 {
+            let dot = CALayer()
+            dot.backgroundColor = NSColor.white.withAlphaComponent(0.85).cgColor
+            dot.cornerRadius = dotSize / 2
+            dot.frame = CGRect(
+                x: CGFloat(i) * (dotSize + spacing),
+                y: (dotsContainer.bounds.height - dotSize) / 2,
+                width: dotSize, height: dotSize
+            )
+            let pulse = CABasicAnimation(keyPath: "opacity")
+            pulse.fromValue = 0.3
+            pulse.toValue = 1.0
+            pulse.duration = 0.5
+            pulse.autoreverses = true
+            pulse.repeatCount = .infinity
+            pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            pulse.beginTime = CACurrentMediaTime() + Double(i) * 0.15
+            dot.add(pulse, forKey: "pulse")
+            dotsContainer.layer?.addSublayer(dot)
+        }
+    }
+
+    /// Cross-fades from the typing dots to the actual message text.
+    private func revealText() {
+        guard !didDismiss, !didRevealText else { return }
+        didRevealText = true
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = 0.25
+            dotsContainer.animator().alphaValue = 0
+            label.animator().alphaValue = 1
+        }, completionHandler: { [weak self] in
+            self?.dotsContainer.removeFromSuperview()
+        })
+    }
 
     func pointTailTowardButterfly(onRight: Bool) {
         tail.frame.origin.x = onRight ? frame.width - 8 : -4
@@ -118,6 +171,13 @@ final class BubbleView: NSView {
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.5
             animator().alphaValue = 1
+        }
+        // Tied to fadeIn (the moment the card is actually visible) rather
+        // than init, since the card is typically created well before it's
+        // shown (e.g. during the fly-in animation) — timing this from init
+        // would let the dots-to-text swap happen off-screen, unseen.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { [weak self] in
+            self?.revealText()
         }
     }
 
