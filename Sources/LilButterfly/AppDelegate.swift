@@ -64,11 +64,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let displayWidth = ButterflySize.width(forIndex: config.butterflySizeIndex)
         if config.mode == "docked" {
             guard let dockedOverlay else { return false }
-            dockedOverlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth)
+            dockedOverlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: config.restingSeconds)
             return true
         }
         guard let overlay = overlays.filter({ $0.isAvailable }).randomElement() else { return false }
-        overlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth)
+        overlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: config.restingSeconds)
         return true
     }
 
@@ -102,7 +102,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         for (index, name) in WingAssets.names().enumerated() { addAssetItem(to: assetMenu, title: name, index: index) }
         let assetItem = NSMenuItem(title: "Butterfly Design", action: nil, keyEquivalent: ""); assetItem.submenu = assetMenu; menu.addItem(assetItem)
         let sizeSlider = SizeSliderView(currentIndex: config.butterflySizeIndex, target: self, action: #selector(sizeSliderMoved(_:)))
-        let sizeSliderItem = NSMenuItem(); sizeSliderItem.view = sizeSlider; menu.addItem(sizeSliderItem); menu.addItem(.separator())
+        let sizeSliderItem = NSMenuItem(); sizeSliderItem.view = sizeSlider; menu.addItem(sizeSliderItem)
+        let restingSlider = RestingSliderView(currentSeconds: config.restingSeconds, target: self, action: #selector(restingSliderMoved(_:)))
+        let restingSliderItem = NSMenuItem(); restingSliderItem.view = restingSlider; menu.addItem(restingSliderItem); menu.addItem(.separator())
         addItem(to: menu, title: "Kavii ✨", action: #selector(kaviiTapped))
         menu.addItem(.separator())
         addItem(to: menu, title: "Quiet hours \(config.quietHoursEnabled ? "(\(config.quietHoursStart):00–\(config.quietHoursEnd):00) ✓" : "(off)")", action: #selector(toggleQuietHoursTapped)); menu.addItem(.separator())
@@ -141,6 +143,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func frequencyTapped(_ sender: NSMenuItem) { guard let pair = sender.representedObject as? [Int], pair.count == 2 else { return }; config.minMinutes = pair[0]; config.maxMinutes = pair[1]; config.customIntervalSeconds = nil; ConfigStore.save(config); scheduleNext() }
     @objc private func intervalSliderMoved(_ sender: NSSlider) { guard let view = sender.superview as? IntervalSliderView else { return }; config.customIntervalSeconds = view.sliderMoved(); ConfigStore.save(config); scheduleNext() }
     @objc private func sizeSliderMoved(_ sender: NSSlider) { guard let view = sender.superview as? SizeSliderView else { return }; config.butterflySizeIndex = view.sliderMoved(); ConfigStore.save(config) }
+    @objc private func restingSliderMoved(_ sender: NSSlider) { guard let view = sender.superview as? RestingSliderView else { return }; config.restingSeconds = view.sliderMoved(); ConfigStore.save(config) }
     @objc private func modeTapped(_ sender: NSMenuItem) { guard let mode = sender.representedObject as? String, mode != config.mode else { return }; config.mode = mode; ConfigStore.save(config); rebuildOverlays() }
     @objc private func dockEdgeTapped(_ sender: NSMenuItem) { guard let raw = sender.representedObject as? String, let edge = ScreenEdge(rawValue: raw) else { return }; config.dockEdge = raw; config.dockPositionFraction = nil; ConfigStore.save(config); dockedOverlay?.updateEdge(edge, positionFraction: nil) }
     @objc private func assetTapped(_ sender: NSMenuItem) { guard let index = sender.representedObject as? Int else { return }; config.pinnedAssetIndex = index == -1 ? nil : index; ConfigStore.save(config) }

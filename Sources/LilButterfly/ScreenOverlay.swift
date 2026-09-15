@@ -58,7 +58,12 @@ final class ScreenOverlay {
         window.orderOut(nil)
     }
 
-    func visit(message: String, pinnedAssetIndex: Int? = nil, displayWidth: CGFloat = ButterflySize.widths[ButterflySize.defaultIndex]) {
+    func visit(
+        message: String,
+        pinnedAssetIndex: Int? = nil,
+        displayWidth: CGFloat = ButterflySize.widths[ButterflySize.defaultIndex],
+        restingSeconds: Double = 5.0
+    ) {
         guard !isBusy, let host = window.contentView else { return }
         isBusy = true
 
@@ -108,13 +113,12 @@ final class ScreenOverlay {
             butterfly.startHover()
             bubble.fadeIn()
 
-            let restingSeconds = 9.0
             DispatchQueue.main.asyncAfter(deadline: .now() + restingSeconds) {
                 // The butterfly does a little left-right-left goodbye sweep
-                // at the exact moment the message fades out — the two
-                // happen simultaneously — then flies off for real once the
-                // sweep finishes.
-                bubble.fadeOut {
+                // at the exact moment the message fades out. Both share
+                // ButterflyView.farewellDuration so they always span the
+                // same window instead of the fade finishing first.
+                bubble.fadeOut(duration: ButterflyView.farewellDuration) {
                     self.closeWindow?.orderOut(nil)
                     self.closeWindow = nil
                     bubble.removeFromSuperview()

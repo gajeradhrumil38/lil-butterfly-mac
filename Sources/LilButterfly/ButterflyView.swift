@@ -175,11 +175,18 @@ final class ButterflyView: NSView {
     /// first to avoid two animations competing for the same "position"
     /// keyPath, and the actual departure flyPath should start from
     /// `centerPosition` after this completes.
+    /// Shared with callers (e.g. bubble.fadeOut(duration:)) so the card's
+    /// fade and this sweep always span the exact same window, instead of
+    /// two independently-tuned durations silently drifting apart — which is
+    /// exactly what happened before: the card (0.4s fade) had long finished
+    /// disappearing before the sweep (at the time, 1.1s) ever reached it.
+    static let farewellDuration: CFTimeInterval = 1.8
+
     func farewellSweep(distance: CGFloat, completion: @escaping () -> Void) {
         guard let layer else { completion(); return }
         let origin = frame.origin
         let dip: CGFloat = 14
-        let duration: CFTimeInterval = 1.8
+        let duration: CFTimeInterval = Self.farewellDuration
 
         // A sine-based path rather than 3 straight line segments: x traces
         // one full sine cycle (0 -> +distance -> 0 -> -distance -> 0), so

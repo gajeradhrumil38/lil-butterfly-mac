@@ -191,9 +191,9 @@ final class BubbleView: NSView {
         }
     }
 
-    func fadeOut(completion: @escaping () -> Void) {
+    func fadeOut(duration: CFTimeInterval = 0.4, completion: @escaping () -> Void) {
         NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = 0.4
+            ctx.duration = duration
             animator().alphaValue = 0
         }, completionHandler: completion)
     }

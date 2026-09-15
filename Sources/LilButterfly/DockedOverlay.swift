@@ -172,7 +172,7 @@ final class DockedOverlay {
         handleWindow = nil
     }
 
-    func visit(message: String, pinnedAssetIndex: Int?, displayWidth: CGFloat) {
+    func visit(message: String, pinnedAssetIndex: Int?, displayWidth: CGFloat, restingSeconds: Double) {
         guard !isBusy, let host = window.contentView,
               let butterfly = ensureParked(pinnedAssetIndex: pinnedAssetIndex, displayWidth: displayWidth) else { return }
         isBusy = true
@@ -210,14 +210,13 @@ final class DockedOverlay {
             bubble?.dismiss()
         }
 
-        let restingSeconds = 9.0
         if Bool.random() {
             butterfly.alphaValue = 1
             butterfly.startHover()
             bubble.fadeIn()
             DispatchQueue.main.asyncAfter(deadline: .now() + restingSeconds) {
                 guard self.visitID == currentVisitID else { return }
-                bubble.fadeOut {
+                bubble.fadeOut(duration: ButterflyView.farewellDuration) {
                     self.closeWindow?.orderOut(nil)
                     self.closeWindow = nil
                     guard self.visitID == currentVisitID else { return }
@@ -241,7 +240,7 @@ final class DockedOverlay {
                 bubble.fadeIn()
                 DispatchQueue.main.asyncAfter(deadline: .now() + restingSeconds) {
                     guard self.visitID == currentVisitID else { return }
-                    bubble.fadeOut {
+                    bubble.fadeOut(duration: ButterflyView.farewellDuration) {
                         self.closeWindow?.orderOut(nil)
                         self.closeWindow = nil
                         guard self.visitID == currentVisitID else { return }

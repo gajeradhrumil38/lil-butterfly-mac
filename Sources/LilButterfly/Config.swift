@@ -23,6 +23,9 @@ struct Config: Codable {
     var dockPositionFraction: Double?
     /// Index into ButterflySize.widths, set by the menu's size slider.
     var butterflySizeIndex: Int
+    /// How long the message card stays fully visible before it starts
+    /// disappearing, in seconds. Set by the menu's resting-time slider.
+    var restingSeconds: Double
 
     static var `default`: Config {
         Config(
@@ -78,7 +81,8 @@ struct Config: Codable {
             meetingReminderMinutes: 15,
             hasStarted: false,
             dockPositionFraction: nil,
-            butterflySizeIndex: ButterflySize.defaultIndex
+            butterflySizeIndex: ButterflySize.defaultIndex,
+            restingSeconds: 5.0
         )
     }
 
@@ -115,7 +119,7 @@ extension Config {
         case minMinutes, maxMinutes, quietHoursEnabled, quietHoursStart, quietHoursEnd
         case paused, messages, mode, dockEdge, pinnedAssetIndex, customIntervalSeconds
         case suppressDuringMeetings, meetingReminderEnabled, meetingReminderMinutes
-        case hasStarted, dockPositionFraction, butterflySizeIndex
+        case hasStarted, dockPositionFraction, butterflySizeIndex, restingSeconds
     }
 
     init(from decoder: Decoder) throws {
@@ -137,7 +141,8 @@ extension Config {
             meetingReminderMinutes: try c.decodeIfPresent(Int.self, forKey: .meetingReminderMinutes) ?? 15,
             hasStarted: try c.decodeIfPresent(Bool.self, forKey: .hasStarted) ?? false,
             dockPositionFraction: try c.decodeIfPresent(Double.self, forKey: .dockPositionFraction),
-            butterflySizeIndex: try c.decodeIfPresent(Int.self, forKey: .butterflySizeIndex) ?? ButterflySize.defaultIndex
+            butterflySizeIndex: try c.decodeIfPresent(Int.self, forKey: .butterflySizeIndex) ?? ButterflySize.defaultIndex,
+            restingSeconds: try c.decodeIfPresent(Double.self, forKey: .restingSeconds) ?? 5.0
         )
     }
 }
