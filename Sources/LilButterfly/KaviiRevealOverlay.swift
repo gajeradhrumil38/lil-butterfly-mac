@@ -22,13 +22,16 @@ final class KaviiRevealOverlay {
         let assetCount = max(1, WingAssets.names().count)
 
         for (index, target) in targets.enumerated() {
-            let angle = (CGFloat(index) / CGFloat(max(1, targets.count))) * .pi * 2
-            let distance = CGFloat.random(in: 150...230)
-            let start = CGPoint(x: target.x + cos(angle) * distance,
-                                y: target.y + sin(angle) * distance)
+            // Fly in from a random spot along the screen border, like the
+            // ambient roaming visits do, rather than a small ring around the
+            // letter itself — reads as the whole word being gathered in from
+            // the edges of the display instead of assembling in place.
+            let edge = ScreenEdge.allCases.randomElement()!
+            let borderPoint = edge.restPoint(in: screenFrame, margin: 0)
+            let start = edge.offscreenPoint(in: screenFrame, restX: borderPoint.x, restY: borderPoint.y, margin: 0)
             let butterfly = ButterflyView(
                 center: start,
-                pinnedAssetIndex: index % assetCount,
+                pinnedAssetIndex: Int.random(in: 0..<assetCount),
                 displayWidth: 20
             )
             butterfly.alphaValue = 0
@@ -36,7 +39,10 @@ final class KaviiRevealOverlay {
             butterflies.append(butterfly)
             DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.035) {
                 guard self.isBusy else { return }
-                butterfly.alphaValue = 1
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = 0.25
+                    butterfly.animator().alphaValue = 1
+                }
                 butterfly.flyPath(from: start, to: target, duration: 0.7, easeIn: false, completion: nil)
             }
         }

@@ -42,8 +42,20 @@ final class DockedOverlay {
         butterfly = nil
     }
 
+    /// Left/right docking pins the butterfly's center exactly on the screen
+    /// edge (x = 0 or x = screenFrame.width) so half of it renders past the
+    /// window's own bounds and is naturally clipped — it reads as perched on
+    /// the border rather than floating just inside it. Top/bottom keep the
+    /// original fully-visible, margin-inset placement.
     private func dockPoint(margin: CGFloat) -> CGPoint {
-        edge.restPoint(in: screenFrame, margin: margin)
+        switch edge {
+        case .left:
+            return CGPoint(x: 0, y: screenFrame.height * CGFloat.random(in: 0.2...0.8))
+        case .right:
+            return CGPoint(x: screenFrame.width, y: screenFrame.height * CGFloat.random(in: 0.2...0.8))
+        case .top, .bottom:
+            return edge.restPoint(in: screenFrame, margin: margin)
+        }
     }
 
     private func ensureParked(pinnedAssetIndex: Int?) -> ButterflyView? {

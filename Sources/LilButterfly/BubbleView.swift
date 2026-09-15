@@ -8,9 +8,14 @@ final class BubbleView: NSView {
     private var didDismiss = false
 
     /// The only interactive region gets its own tiny window so the
-    /// full-screen overlay can remain click-through.
+    /// full-screen overlay can remain click-through. Inset evenly from the
+    /// card's top-right corner (rather than the previous frame, which
+    /// overshot the card's top edge by 1pt and sat almost flush with the
+    /// right edge, reading as misaligned against the card's rounded corner).
     var closeTargetFrame: CGRect {
-        CGRect(x: frame.width - 31, y: frame.height - 27, width: 28, height: 28)
+        let size: CGFloat = 20
+        let margin: CGFloat = 6
+        return CGRect(x: frame.width - margin - size, y: frame.height - margin - size, width: size, height: size)
     }
 
     init(message: String) {
@@ -69,9 +74,9 @@ final class BubbleView: NSView {
         // Measuring with boundingRect(with:options:) against the real
         // wrapping width is the reliable way to size a multi-line label.
         let maxWidth: CGFloat = 220
-        // 14pt left inset + 28pt on the right to clear the close (✕) button
-        // that sits in the top-right corner (see closeTargetFrame below).
-        let horizontalPadding: CGFloat = 42
+        // 14pt left inset + 26pt on the right to clear the close (✕) button
+        // that sits in the top-right corner (see closeTargetFrame above).
+        let horizontalPadding: CGFloat = 40
         let maxTextWidth = maxWidth - horizontalPadding
         label.preferredMaxLayoutWidth = maxTextWidth
 
