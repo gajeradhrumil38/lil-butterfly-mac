@@ -10,25 +10,18 @@ final class MeetingCalendar {
     private let store = EKEventStore()
     private var hasAccess = false
 
-    func requestAccess(completion: @escaping (Bool) -> Void) {
-        if #available(macOS 14.0, *) {
-            switch EKEventStore.authorizationStatus(for: .event) {
-            case .fullAccess:
-                hasAccess = true
-                completion(true)
-            case .notDetermined:
-                store.requestFullAccessToEvents { [weak self] granted, _ in
-                    self?.hasAccess = granted
-                    DispatchQueue.main.async { completion(granted) }
-                }
-            default:
-                completion(false)
-            }
-        } else {
-            store.requestAccess(to: .event) { [weak self] granted, _ in
+    func requestAccess(completion: @escaping @Sendable (Bool) -> Void) {
+        switch EKEventStore.authorizationStatus(for: .event) {
+        case .fullAccess:
+            hasAccess = true
+            completion(true)
+        case .notDetermined:
+            store.requestFullAccessToEvents { [weak self] granted, _ in
                 self?.hasAccess = granted
                 DispatchQueue.main.async { completion(granted) }
             }
+        default:
+            completion(false)
         }
     }
 
@@ -70,7 +63,7 @@ struct VideoMeeting {
 }
 
 final class MeetingCalendar {
-    func requestAccess(completion: @escaping (Bool) -> Void) { completion(false) }
+    func requestAccess(completion: @escaping @Sendable (Bool) -> Void) { completion(false) }
     func nextVideoMeeting(from now: Date = Date()) -> VideoMeeting? { nil }
     func isVideoMeetingActive(at date: Date = Date()) -> Bool { false }
 }
