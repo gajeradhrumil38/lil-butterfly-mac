@@ -100,39 +100,51 @@ final class ButterflyView: NSView {
         rightWing.add(flutterDelayed, forKey: "flutter")
     }
 
-    /// A gentle idle bob + sway while parked next to a message, so it reads
-    /// as still lightly flying rather than freezing in place. Uses a
-    /// different transform component (translation) than flyPath's
-    /// tilt (rotation.z), so the two never conflict — and by the time this
-    /// starts, flyPath's own "flight"/"tilt" keyframe animations have
-    /// already auto-removed themselves (their duration has elapsed), so the
-    /// layer is idle and ready for this.
+    /// A small continuous hovering orbit while parked next to a message, so
+    /// it reads as steadily still-flying in place rather than freezing —
+    /// more like a real insect holding position than a subtle idle wobble.
+    /// The orbit is a closed loop on `position`, so the layer's underlying
+    /// model position never actually changes (only the presentation layer
+    /// moves along it); a subsequent flyPath reading `layer.position` for
+    /// its `from` point still gets the true rest point. Uses rotation.z for
+    /// the banking sway, the same component flyPath's own tilt animates, so
+    /// by the time this starts, flyPath's keyframe animations have already
+    /// auto-removed themselves (their duration has elapsed) and the layer
+    /// is idle and ready for this.
     func startHover() {
         guard let layer else { return }
-        let bob = CABasicAnimation(keyPath: "transform.translation.y")
-        bob.fromValue = -2
-        bob.toValue = 3
-        bob.duration = 1.6
-        bob.autoreverses = true
-        bob.repeatCount = .infinity
-        bob.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        let center = layer.position
+        let radiusX: CGFloat = 5
+        let radiusY: CGFloat = 8
+        let segments = 32
+        let loopPath = CGMutablePath()
+        for i in 0...segments {
+            let angle = (CGFloat(i) / CGFloat(segments)) * 2 * .pi
+            loopPath.addLine(to: CGPoint(x: center.x + sin(angle) * radiusX, y: center.y + cos(angle) * radiusY))
+        }
+        loopPath.closeSubpath()
+
+        let orbit = CAKeyframeAnimation(keyPath: "position")
+        orbit.path = loopPath
+        orbit.duration = 2.4
+        orbit.calculationMode = .paced
+        orbit.repeatCount = .infinity
+        layer.add(orbit, forKey: "hoverOrbit")
 
         let sway = CABasicAnimation(keyPath: "transform.rotation.z")
-        sway.fromValue = -0.05
-        sway.toValue = 0.05
-        sway.duration = 1.9
+        sway.fromValue = -0.06
+        sway.toValue = 0.06
+        sway.duration = 1.2
         sway.autoreverses = true
         sway.repeatCount = .infinity
         sway.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-
-        layer.add(bob, forKey: "hoverBob")
         layer.add(sway, forKey: "hoverSway")
     }
 
     /// Stops the idle hover — call before starting a new flyPath, since
     /// flyPath's own tilt animation targets the same rotation.z component.
     func stopHover() {
-        layer?.removeAnimation(forKey: "hoverBob")
+        layer?.removeAnimation(forKey: "hoverOrbit")
         layer?.removeAnimation(forKey: "hoverSway")
     }
 
