@@ -124,9 +124,9 @@ final class DockedOverlay {
     }
 
     private func handleDrag(dx: CGFloat, dy: CGFloat) {
-        guard let butterfly, let layer = butterfly.layer else { return }
+        guard let butterfly else { return }
         if dragStartCenter == nil {
-            dragStartCenter = layer.position
+            dragStartCenter = butterfly.centerPosition
         }
         guard let start = dragStartCenter else { return }
         var newPosition = start
@@ -136,20 +136,21 @@ final class DockedOverlay {
         case .top, .bottom:
             newPosition.x = clamp(start.x + dx, 20, screenFrame.width - 20)
         }
-        layer.removeAllAnimations()
-        layer.position = newPosition
+        butterfly.layer?.removeAllAnimations()
+        butterfly.centerPosition = newPosition
         updateHandleWindowFrame()
     }
 
     private func handleDragEnd() {
         defer { dragStartCenter = nil }
-        guard let butterfly, let layer = butterfly.layer else { return }
+        guard let butterfly else { return }
+        let center = butterfly.centerPosition
         let fraction: Double
         switch edge {
         case .left, .right:
-            fraction = Double(layer.position.y / screenFrame.height)
+            fraction = Double(center.y / screenFrame.height)
         case .top, .bottom:
-            fraction = Double(layer.position.x / screenFrame.width)
+            fraction = Double(center.x / screenFrame.width)
         }
         positionFraction = fraction
         onPositionChanged?(fraction)
@@ -204,7 +205,7 @@ final class DockedOverlay {
             }
             self.updateHandleWindowFrame()
         }
-        positionBubble(near: butterfly.layer?.position ?? dockPoint(margin: 40))
+        positionBubble(near: butterfly.centerPosition)
         closeWindow = BubbleCloseWindow(frame: closeTargetFrameOnScreen()) { [weak bubble] in
             bubble?.dismiss()
         }
@@ -226,7 +227,7 @@ final class DockedOverlay {
                 }
             }
         } else {
-            let dockSpot = butterfly.layer?.position ?? dockPoint(margin: 40)
+            let dockSpot = butterfly.centerPosition
             let inward = CGPoint(x: screenFrame.width * CGFloat.random(in: 0.3...0.7),
                                  y: screenFrame.height * CGFloat.random(in: 0.3...0.7))
             butterfly.flyPath(from: dockSpot, to: inward, duration: 1.2, easeIn: false) {

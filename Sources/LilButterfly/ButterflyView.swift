@@ -47,6 +47,22 @@ final class ButterflyView: NSView {
 
     required init?(coder: NSCoder) { fatalError("unavailable") }
 
+    /// The view's center, in its superview's coordinate space. Every caller
+    /// outside this file (ScreenOverlay, DockedOverlay, KaviiRevealOverlay)
+    /// thinks in terms of centers, so this is the only thing they should
+    /// read or write — never `layer.position` directly. A plain NSView's
+    /// backing layer keeps anchorPoint at (0, 0), and confirmed by direct
+    /// instrumentation, AppKit resyncs the layer from the view's own `frame`
+    /// (which only `setFrameOrigin`/`.frame =` update) during normal
+    /// display passes — so a raw `layer.position = someCenter` looks right
+    /// immediately but silently reverts once that sync happens, which
+    /// previously made the resting butterfly's model position snap back to
+    /// its pre-flight spot (sometimes off-window entirely).
+    var centerPosition: CGPoint {
+        get { CGPoint(x: frame.midX, y: frame.midY) }
+        set { setFrameOrigin(CGPoint(x: newValue.x - frame.width / 2, y: newValue.y - frame.height / 2)) }
+    }
+
     private func buildWings(from image: CGImage, inkBounds: CGRect, displaySize: CGSize) {
         guard let root = layer else { return }
 
@@ -103,25 +119,23 @@ final class ButterflyView: NSView {
     /// A small continuous hovering orbit while parked next to a message, so
     /// it reads as steadily still-flying in place rather than freezing —
     /// more like a real insect holding position than a subtle idle wobble.
-    /// The orbit is a closed loop on `position`, so the layer's underlying
-    /// model position never actually changes (only the presentation layer
-    /// moves along it); a subsequent flyPath reading `layer.position` for
-    /// its `from` point still gets the true rest point. Uses rotation.z for
-    /// the banking sway, the same component flyPath's own tilt animates, so
-    /// by the time this starts, flyPath's keyframe animations have already
-    /// auto-removed themselves (their duration has elapsed) and the layer
-    /// is idle and ready for this.
+    /// The orbit's keyframe path animates the *presentation* layer only
+    /// (the model position, i.e. `centerPosition`/`frame`, never changes),
+    /// so a subsequent flyPath reading `centerPosition` for its `from`
+    /// point still gets the true rest point. Path coordinates are in the
+    /// layer's own origin space (anchorPoint (0, 0)), so they're built
+    /// relative to the current frame origin, not the center.
     func startHover() {
         guard let layer else { return }
-        let center = layer.position
+        let origin = frame.origin
         let radiusX: CGFloat = 5
         let radiusY: CGFloat = 8
         let segments = 32
         let loopPath = CGMutablePath()
-        loopPath.move(to: CGPoint(x: center.x, y: center.y + radiusY))
+        loopPath.move(to: CGPoint(x: origin.x, y: origin.y + radiusY))
         for i in 1...segments {
             let angle = (CGFloat(i) / CGFloat(segments)) * 2 * .pi
-            loopPath.addLine(to: CGPoint(x: center.x + sin(angle) * radiusX, y: center.y + cos(angle) * radiusY))
+            loopPath.addLine(to: CGPoint(x: origin.x + sin(angle) * radiusX, y: origin.y + cos(angle) * radiusY))
         }
         loopPath.closeSubpath()
 
@@ -149,12 +163,19 @@ final class ButterflyView: NSView {
         layer?.removeAnimation(forKey: "hoverSway")
     }
 
-    /// Moves the view's layer from `from` to `to` (in superlayer/window
+    /// Moves the view from `from` to `to` (both centers, in superview
     /// coordinates) with easing and a perpendicular "wobble" so the path
     /// feels alive rather than mechanical. Sets the final model position
-    /// immediately so there's no snap-back when the animation is removed.
+    /// immediately (via `centerPosition`, not `layer.position` — see its
+    /// doc comment) so there's no snap-back once the animation ends.
     func flyPath(from: CGPoint, to: CGPoint, duration: CFTimeInterval, easeIn: Bool, completion: (() -> Void)?) {
         guard let layer = layer else { return }
+
+        // The keyframe animation drives the layer's raw `position`, which
+        // is origin-space (anchorPoint (0, 0)), while `from`/`to`/the
+        // wobble math below are all expressed as centers — so every point
+        // in the path is offset by this constant to convert.
+        let halfSize = CGPoint(x: frame.width / 2, y: frame.height / 2)
 
         let segments = 36
         let wobbleAmplitude: CGFloat = 22
@@ -165,7 +186,7 @@ final class ButterflyView: NSView {
         let perp = length > 0 ? CGPoint(x: -dy / length, y: dx / length) : .zero
 
         let cgPath = CGMutablePath()
-        cgPath.move(to: from)
+        cgPath.move(to: CGPoint(x: from.x - halfSize.x, y: from.y - halfSize.y))
         var rotations: [NSNumber] = [0]
         for i in 1...segments {
             let t = CGFloat(i) / CGFloat(segments)
@@ -175,11 +196,12 @@ final class ButterflyView: NSView {
             let envelope = 1 - abs(2 * t - 1)
             let phase = sin(t * .pi * 3)
             let wobble = phase * wobbleAmplitude * envelope
-            cgPath.addLine(to: CGPoint(x: baseX + perp.x * wobble, y: baseY + perp.y * wobble))
+            let point = CGPoint(x: baseX + perp.x * wobble, y: baseY + perp.y * wobble)
+            cgPath.addLine(to: CGPoint(x: point.x - halfSize.x, y: point.y - halfSize.y))
             rotations.append(NSNumber(value: Double(phase * tiltAmplitude * envelope)))
         }
 
-        layer.position = to
+        centerPosition = to // final model value, set up front via the view's own frame API
         layer.transform = CATransform3DIdentity
 
         let anim = CAKeyframeAnimation(keyPath: "position")
