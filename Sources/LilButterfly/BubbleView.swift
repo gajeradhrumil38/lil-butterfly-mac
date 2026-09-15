@@ -3,7 +3,7 @@ import AppKit
 final class BubbleView: NSView {
 
     private let effectView = NSVisualEffectView()
-    private let label = NSTextField(labelWithString: "")
+    private let label = NSTextView(frame: .zero)
     private let tail = NSView()
     private let dotsContainer = NSView()
     private var didRevealText = false
@@ -53,71 +53,57 @@ final class BubbleView: NSView {
         layer?.shadowOffset = CGSize(width: 0, height: -3)
         alphaValue = 0
 
-        label.stringValue = message
-        label.font = NSFont.systemFont(ofSize: 13)
+        label.string = message
+        let font = NSFont.systemFont(ofSize: 13)
+        label.font = font
         label.textColor = .white
-        label.backgroundColor = .clear
-        label.isBezeled = false
+        label.drawsBackground = false
         label.isEditable = false
         label.isSelectable = false
-        label.lineBreakMode = .byWordWrapping
-        label.usesSingleLineMode = false
-        label.cell?.wraps = true
-        // Let the card grow for longer messages instead of clipping after a
-        // fixed number of lines.
-        label.maximumNumberOfLines = 0
-        label.alignment = .left
+        label.isRichText = false
+        label.textContainerInset = .zero
+        label.textContainer?.lineFragmentPadding = 0
+        label.textContainer?.lineBreakMode = .byWordWrapping
+        label.textContainer?.widthTracksTextView = false
+        label.textContainer?.heightTracksTextView = false
         label.alphaValue = 0 // revealed after the typing-dots beat, see revealText()
+        label.textStorage?.setAttributedString(NSAttributedString(
+            string: message,
+            attributes: [.font: font, .foregroundColor: NSColor.white]
+        ))
         addSubview(label)
 
-        // NSTextField's sizeToFit() doesn't reliably account for
-        // preferredMaxLayoutWidth when wrapping to multiple lines (it's an
-        // Auto Layout hint; sizeToFit() is the older frame-based API), so it
-        // can hand back a height sized for fewer lines than the text will
-        // actually wrap into at this width — clipping the last line(s).
-        // Measuring with boundingRect(with:options:) against the real
-        // wrapping width is the reliable way to size a multi-line label.
         let maxWidth: CGFloat = 280
         // 14pt left inset + 26pt on the right to clear the close (✕) button
         // that sits in the top-right corner (see closeTargetFrame above).
         let horizontalPadding: CGFloat = 40
-        let maxTextWidth = maxWidth - horizontalPadding
-        label.preferredMaxLayoutWidth = maxTextWidth
-
-        // Two independent height estimates, and we take the taller: plain
-        // NSString.boundingRect() measures by font metrics alone and can
-        // come up short for text containing emoji (the messages use quite a
-        // few), since color-emoji glyphs don't always report the same
-        // advance width boundingRect assumes — while intrinsicContentSize
-        // goes through the label's real cell layout (the same path that
-        // will actually render it) but only reports a wrapped height once
-        // preferredMaxLayoutWidth is set, which we've just done above.
-        // Occasionally seeing the last line clipped was this mismatch.
-        let font = label.font ?? NSFont.systemFont(ofSize: 13)
+        let attributes: [NSAttributedString.Key: Any] = [.font: font]
         let naturalMeasured = (message as NSString).boundingRect(
             with: CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude),
             options: [.usesLineFragmentOrigin, .usesFontLeading],
-            attributes: [.font: font]
+            attributes: attributes
         )
-        let intrinsicHeight = label.intrinsicContentSize.height
         // Pick the compact width from the natural one-line measurement, then
         // measure again at that final width. The second pass is important:
         // resizing a medium-length sentence can create an extra wrapped line.
         let width = min(maxWidth, max(150, ceil(naturalMeasured.width) + horizontalPadding))
         let textWidth = width - horizontalPadding
-        let measured = (message as NSString).boundingRect(
-            with: CGSize(width: textWidth, height: .greatestFiniteMagnitude),
-            options: [.usesLineFragmentOrigin, .usesFontLeading],
-            attributes: [.font: font]
-        )
-        let textHeight = ceil(max(measured.height, intrinsicHeight))
+
+        // Ask TextKit for the height of the actual laid-out glyphs. Unlike
+        // NSTextField's intrinsicContentSize, this cannot silently return a
+        // one-line height for a wrapped message.
+        guard let textContainer = label.textContainer, let layoutManager = label.layoutManager else { return }
+        textContainer.containerSize = CGSize(width: textWidth, height: CGFloat.greatestFiniteMagnitude)
+        layoutManager.ensureLayout(for: textContainer)
+        let usedRect = layoutManager.usedRect(for: textContainer)
+        let textHeight = ceil(max(usedRect.height, font.ascender - font.descender + font.leading))
         let height = textHeight + 20
         frame = CGRect(x: 0, y: 0, width: width, height: height)
         effectView.frame = CGRect(x: 0, y: 0, width: width, height: height)
         effectView.layer?.cornerRadius = height / 2 // full pill/capsule shape
         effectView.layer?.sublayers?.first(where: { $0 is CAGradientLayer })?.frame = effectView.bounds
         tail.frame = CGRect(x: -4, y: height / 2 - 6, width: 12, height: 12) // vertically centered on the pill
-        label.frame = CGRect(x: 14, y: 10, width: width - horizontalPadding, height: textHeight)
+        label.frame = CGRect(x: 14, y: 10, width: textWidth, height: textHeight)
 
         setUpDots(in: label.frame)
         addSubview(dotsContainer)
