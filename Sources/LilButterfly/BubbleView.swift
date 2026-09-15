@@ -61,7 +61,7 @@ final class BubbleView: NSView {
         label.isEditable = false
         label.isSelectable = false
         label.lineBreakMode = .byWordWrapping
-        label.maximumNumberOfLines = 3
+        label.maximumNumberOfLines = 4
         label.alignment = .left
         label.alphaValue = 0 // revealed after the typing-dots beat, see revealText()
         addSubview(label)
@@ -73,7 +73,7 @@ final class BubbleView: NSView {
         // actually wrap into at this width — clipping the last line(s).
         // Measuring with boundingRect(with:options:) against the real
         // wrapping width is the reliable way to size a multi-line label.
-        let maxWidth: CGFloat = 220
+        let maxWidth: CGFloat = 280
         // 14pt left inset + 26pt on the right to clear the close (✕) button
         // that sits in the top-right corner (see closeTargetFrame above).
         let horizontalPadding: CGFloat = 40

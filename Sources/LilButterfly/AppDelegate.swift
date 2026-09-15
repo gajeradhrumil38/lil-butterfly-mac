@@ -57,10 +57,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @discardableResult
     private func fireVisit(manualOverride: Bool = false) -> Bool {
-        guard manualOverride || (!config.paused && !config.isQuietHour()) else { return false }
+        guard manualOverride || !config.paused else { return false }
         guard manualOverride || !config.suppressDuringMeetings ||
                 (!MeetingDetector.isMeetingAppActive && !meetingCalendar.isVideoMeetingActive()) else { return false }
-        let message = config.randomMessage()
+        // Quiet hours are gentle mode, not a hard stop: randomMessage
+        // returns nil most of the time during that window instead (see its
+        // doc comment), so a scheduled cycle can land here and legitimately
+        // decide to stay silent.
+        guard let message = config.randomMessage(manualOverride: manualOverride) else { return false }
         let displayWidth = ButterflySize.width(forIndex: config.butterflySizeIndex)
         if config.mode == "docked" {
             guard let dockedOverlay else { return false }
@@ -79,7 +83,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(NSMenuItem(title: "Lil Butterfly", action: nil, keyEquivalent: "")); menu.addItem(.separator())
         let countdown: String
         if config.paused { countdown = "Paused" }
-        else if config.isQuietHour() { countdown = "Quiet hours" }
+        else if config.isQuietHour() { countdown = "Quiet hours (gentle mode — rare, soft messages)" }
         else if let nextFireDate { countdown = "Next visit in ~\(IntervalSliderView.formatted(max(0, nextFireDate.timeIntervalSinceNow)))" }
         else { countdown = "Next visit: not scheduled" }
         let countdownItem = NSMenuItem(title: countdown, action: nil, keyEquivalent: ""); countdownItem.isEnabled = false; menu.addItem(countdownItem)

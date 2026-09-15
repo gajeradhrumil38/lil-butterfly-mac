@@ -3,11 +3,23 @@ import Foundation
 struct Config: Codable {
     var minMinutes: Int
     var maxMinutes: Int
+    /// Quiet hours no longer mean total silence — they mean "gentle mode":
+    /// messages during this window come from sleepMessages and only fire
+    /// ~25% of the time a visit is scheduled, mostly staying silent
+    /// otherwise, rather than a hard block. See randomMessage(at:).
     var quietHoursEnabled: Bool
     var quietHoursStart: Int
     var quietHoursEnd: Int
     var paused: Bool
+    /// The "Always Pool" — eligible any hour outside quiet hours, mixed in
+    /// ~35% of the time alongside whichever time-of-day pool applies.
     var messages: [String]
+    var morningMessages: [String]    // 9:00–11:59
+    var middayMessages: [String]     // 12:00–14:59
+    var afternoonMessages: [String]  // 15:00–17:59
+    var eveningMessages: [String]    // 18:00–20:59
+    var lateNightMessages: [String]  // 21:00–23:59 and 0:00–0:59
+    var sleepMessages: [String]      // used during quiet hours
     var mode: String            // "roaming" | "docked"
     var dockEdge: String        // "left" | "right" | "top" | "bottom"
     var pinnedAssetIndex: Int?  // nil = random each visit
@@ -32,45 +44,110 @@ struct Config: Codable {
             minMinutes: 45,
             maxMinutes: 90,
             quietHoursEnabled: true,
-            quietHoursStart: 23,
-            quietHoursEnd: 7,
+            quietHoursStart: 22,
+            quietHoursEnd: 10,
             paused: false,
             messages: [
-                "Drink some water 💧",
-                "Take a deep breath",
-                "Roll your shoulders back",
-                "You're doing better than you think",
-                "Look away from the screen for 20 seconds",
-                "Smile — even a small one counts 🙂",
-                "Sit up a little straighter",
-                "You've got this",
+                "Drink some water, love 💧",
+                "A little water break for you",
+                "Your body says thank you for water",
+                "Sit up nice and tall for a sec",
+                "Roll those shoulders back",
+                "Unclench your jaw, babe",
+                "Shake your hands out for a moment",
                 "Stretch your neck side to side",
-                "Remember to blink :)",
-                "A little progress is still progress",
-                "Unclench your jaw",
-                "Go get some fresh air if you can",
-                "You're allowed to take a short break",
-                "Good posture check — how's it looking?",
-                "You don't have to solve everything right now",
-                "One small thing at a time, lovely",
-                "Your best today can look different from yesterday",
-                "The work is important, but so are you",
-                "A tired brain deserves kindness, not criticism",
-                "You are allowed to be proud of how far you've come",
-                "Pause the overthinking — come back to this moment",
-                "You can be ambitious and still take a break",
-                "Your feelings are information, not instructions",
-                "Breathe. This moment is manageable",
-                "You don't need perfect conditions to make progress",
-                "Future you will be grateful for this little pause",
-                "Close one tab in your mind and take one breath",
-                "You are doing real work, even when it feels invisible",
-                "Drink water, soften your shoulders, keep going gently",
-                "It is okay if today is a slower day",
-                "You are more than your productivity",
-                "A tiny reset can change the shape of the afternoon",
-                "You have handled hard days before",
-                "Rest is part of the plan, not a failure of it",
+                "Look away from the screen for 20 seconds",
+                "Close your eyes for a few breaths",
+                "Let your eyes rest on something far away",
+                "Blink a few times on purpose",
+                "You're doing so well",
+                "Proud of how hard you're working",
+                "You've got this, one step at a time",
+                "Small breaks help you shine brighter ✨",
+                "Take your time, you're not behind",
+                "Just a little flutter to say hi 🦋",
+                "Smile — you deserve it too",
+                "Someone's proud of you right now",
+                "You're more than your output today",
+                "You don't need to prove it today, just show up",
+                "You're allowed to be ambitious and tired",
+                "Strong and soft can be the same person",
+                "You're handling more than people realize",
+                "Building this with you makes it feel possible",
+                "Glad we're figuring this out together",
+                "Founders forget to drink water too — sip time 💧",
+                "Standing desk moment? Just for a sec",
+            ],
+            morningMessages: [
+                "The work you're putting in adds up",
+                "This is what building something looks like",
+                "Every founder story has days like this",
+                "You're building something from nothing — that's wild",
+                "You didn't wait for permission. That's rare.",
+                "Most people talk about ideas. You built one.",
+                "Fresh start, same drive",
+                "Morning momentum — here we go",
+            ],
+            middayMessages: [
+                "Have you eaten something today?",
+                "A real lunch break sounds good right now",
+                "Feed yourself, you've earned it",
+                "Fuel the ambition — have you eaten?",
+                "A real lunch break, founder 😉",
+                "Your goals need you fed too",
+                "Water = sharper focus. Quick sip?",
+                "Halfway-ish — how's your energy?",
+            ],
+            afternoonMessages: [
+                "This is the part where you push through, gently",
+                "A quick stretch might help right about now",
+                "You're allowed to slow down for a minute",
+                "A 20-second reset, then back to crushing it",
+                "Best work comes from a clear head — breathe",
+                "Recharge for 10 seconds, perform for hours",
+                "Peak performance needs a hydrated brain 💧",
+                "Ship it imperfect, iterate later",
+                "Done today beats perfect never",
+                "Uncertainty is the job description, not a sign you're failing",
+                "No isn't the end, it's just data",
+                "Breathe — the runway math can wait 20 seconds",
+                "Desk-hunch check — shoulders back",
+            ],
+            eveningMessages: [
+                "Almost through today — nice work",
+                "Wrap-up time is close, hang in there",
+                "However today went, you showed up for it",
+                "Closing time soon — finish strong",
+                "Today's effort counts, whatever's left undone",
+                "You showed up hard today. That's the job.",
+                "Whatever today threw at the company, we've got it",
+                "Hard days don't erase how far you've already come",
+            ],
+            lateNightMessages: [
+                "Still going? Don't forget water either way",
+                "Late night — be extra gentle with yourself",
+                "Whenever you stop tonight is enough",
+                "Rest is productive too, even now",
+                "Still at it? Impressive and also — water",
+                "Late nights build empires, but rest builds you too",
+                "The grind respects a bedtime eventually",
+                "The company will survive you taking 10 seconds off",
+                "Whatever's left on the list will be there tomorrow",
+                "Closing the laptop tonight is still a win",
+            ],
+            sleepMessages: [
+                "So jaa 💤",
+                "Sleep well, love",
+                "I know you're working hard — take a nap",
+                "It's okay to close your eyes for a bit",
+                "The world can wait, rest now",
+                "Even founders need sleep",
+                "Rest now, dream a little",
+                "So jaa, kal phir se 🌙",
+                "Ten minutes of rest counts too",
+                "You can pick this back up tomorrow",
+                "Whatever it is, it'll still be there when you wake up",
+                "Take care of you tonight",
             ],
             mode: "roaming",
             dockEdge: "right",
@@ -86,6 +163,12 @@ struct Config: Codable {
         )
     }
 
+    /// True during the configured quiet-hours window. This is no longer a
+    /// hard block on visits — it switches randomMessage(at:) into "gentle
+    /// mode" (sleepMessages, ~25% of the time, mostly silent otherwise)
+    /// instead of stopping visits outright, so the butterfly can still show
+    /// up overnight if the laptop is open, just far less often and more
+    /// softly.
     func isQuietHour(at date: Date = Date()) -> Bool {
         guard quietHoursEnabled else { return false }
         let hour = Calendar.current.component(.hour, from: date)
@@ -104,8 +187,33 @@ struct Config: Codable {
         return Double.random(in: minSec...maxSec)
     }
 
-    func randomMessage() -> String {
-        messages.randomElement() ?? "You've got this"
+    /// Picks a message, or nil to mean "stay silent this cycle" (only
+    /// possible during quiet hours, and only when not manually triggered).
+    /// Outside quiet hours: 35% chance of the Always Pool, otherwise
+    /// whichever time-of-day pool matches the current hour. During quiet
+    /// hours: 25% chance of a sleepMessages pick (always, if manually
+    /// triggered — "Show a butterfly now" shouldn't get silently
+    /// swallowed by the dice roll), nil the rest of the time.
+    func randomMessage(at date: Date = Date(), manualOverride: Bool = false) -> String? {
+        if isQuietHour(at: date) {
+            if !manualOverride {
+                guard Double.random(in: 0..<1) < 0.25 else { return nil }
+            }
+            return sleepMessages.randomElement() ?? messages.randomElement() ?? "Rest now, dream a little"
+        }
+        if Double.random(in: 0..<1) < 0.35 {
+            return messages.randomElement() ?? "You've got this"
+        }
+        let hour = Calendar.current.component(.hour, from: date)
+        let pool: [String]
+        switch hour {
+        case 9...11: pool = morningMessages
+        case 12...14: pool = middayMessages
+        case 15...17: pool = afternoonMessages
+        case 18...20: pool = eveningMessages
+        default: pool = lateNightMessages // 21:00–23:59, 0:00–0:59
+        }
+        return pool.randomElement() ?? messages.randomElement() ?? "You've got this"
     }
 }
 
@@ -120,10 +228,13 @@ extension Config {
         case paused, messages, mode, dockEdge, pinnedAssetIndex, customIntervalSeconds
         case suppressDuringMeetings, meetingReminderEnabled, meetingReminderMinutes
         case hasStarted, dockPositionFraction, butterflySizeIndex, restingSeconds
+        case morningMessages, middayMessages, afternoonMessages, eveningMessages
+        case lateNightMessages, sleepMessages
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        let fallback = Config.default
         self.init(
             minMinutes: try c.decode(Int.self, forKey: .minMinutes),
             maxMinutes: try c.decode(Int.self, forKey: .maxMinutes),
@@ -132,6 +243,12 @@ extension Config {
             quietHoursEnd: try c.decode(Int.self, forKey: .quietHoursEnd),
             paused: try c.decode(Bool.self, forKey: .paused),
             messages: try c.decode([String].self, forKey: .messages),
+            morningMessages: try c.decodeIfPresent([String].self, forKey: .morningMessages) ?? fallback.morningMessages,
+            middayMessages: try c.decodeIfPresent([String].self, forKey: .middayMessages) ?? fallback.middayMessages,
+            afternoonMessages: try c.decodeIfPresent([String].self, forKey: .afternoonMessages) ?? fallback.afternoonMessages,
+            eveningMessages: try c.decodeIfPresent([String].self, forKey: .eveningMessages) ?? fallback.eveningMessages,
+            lateNightMessages: try c.decodeIfPresent([String].self, forKey: .lateNightMessages) ?? fallback.lateNightMessages,
+            sleepMessages: try c.decodeIfPresent([String].self, forKey: .sleepMessages) ?? fallback.sleepMessages,
             mode: try c.decodeIfPresent(String.self, forKey: .mode) ?? "roaming",
             dockEdge: try c.decodeIfPresent(String.self, forKey: .dockEdge) ?? "right",
             pinnedAssetIndex: try c.decodeIfPresent(Int.self, forKey: .pinnedAssetIndex),
