@@ -118,7 +118,8 @@ final class ButterflyView: NSView {
         let radiusY: CGFloat = 8
         let segments = 32
         let loopPath = CGMutablePath()
-        for i in 0...segments {
+        loopPath.move(to: CGPoint(x: center.x, y: center.y + radiusY))
+        for i in 1...segments {
             let angle = (CGFloat(i) / CGFloat(segments)) * 2 * .pi
             loopPath.addLine(to: CGPoint(x: center.x + sin(angle) * radiusX, y: center.y + cos(angle) * radiusY))
         }
