@@ -9,8 +9,8 @@ Every 45–90 minutes (randomized), a butterfly flutters in from a random edge
 of a random monitor, shows a short kind message near the edge — never over
 the center of your screen — waits about 10 seconds, then flies back out.
 
-- Fully click-through: the overlay window ignores all mouse events, so it
-  never blocks a click.
+- Fully click-through everywhere except the message card's small close mark,
+  so the card can be dismissed without blocking clicks elsewhere.
 - Never appears in the Dock, Cmd-Tab, or Mission Control app switcher
   (`.accessory` activation policy).
 - Lives at screen edges, not the center.
