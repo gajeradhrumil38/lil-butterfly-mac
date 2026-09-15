@@ -9,7 +9,10 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "LilButterfly",
-            path: "Sources/LilButterfly"
+            path: "Sources/LilButterfly",
+            resources: [
+                .copy("Resources/Wings")
+            ]
         )
     ]
 )
