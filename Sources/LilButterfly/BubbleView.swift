@@ -61,15 +61,37 @@ final class BubbleView: NSView {
         label.alignment = .left
         addSubview(label)
 
+        // NSTextField's sizeToFit() doesn't reliably account for
+        // preferredMaxLayoutWidth when wrapping to multiple lines (it's an
+        // Auto Layout hint; sizeToFit() is the older frame-based API), so it
+        // can hand back a height sized for fewer lines than the text will
+        // actually wrap into at this width — clipping the last line(s).
+        // Measuring with boundingRect(with:options:) against the real
+        // wrapping width is the reliable way to size a multi-line label.
         let maxWidth: CGFloat = 220
-        label.preferredMaxLayoutWidth = maxWidth - 48
-        label.sizeToFit()
-        let width = min(maxWidth, label.frame.width + 48)
-        let height = label.frame.height + 20
+        // 14pt left inset + 28pt on the right to clear the close (✕) button
+        // that sits in the top-right corner (see closeTargetFrame below).
+        let horizontalPadding: CGFloat = 42
+        let maxTextWidth = maxWidth - horizontalPadding
+        label.preferredMaxLayoutWidth = maxTextWidth
+
+        let font = label.font ?? NSFont.systemFont(ofSize: 13)
+        let measured = (message as NSString).boundingRect(
+            with: CGSize(width: maxTextWidth, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: [.font: font]
+        )
+        let lineHeight = ceil(font.ascender - font.descender + font.leading)
+        let maxTextHeight = lineHeight * CGFloat(label.maximumNumberOfLines)
+        let textWidth = min(ceil(measured.width), maxTextWidth)
+        let textHeight = min(ceil(measured.height), maxTextHeight)
+
+        let width = min(maxWidth, textWidth + horizontalPadding)
+        let height = textHeight + 20
         frame = CGRect(x: 0, y: 0, width: width, height: height)
         effectView.frame = CGRect(x: 0, y: 0, width: width, height: height)
         effectView.layer?.sublayers?.first(where: { $0 is CAGradientLayer })?.frame = effectView.bounds
-        label.frame = CGRect(x: 14, y: 10, width: width - 42, height: label.frame.height)
+        label.frame = CGRect(x: 14, y: 10, width: width - horizontalPadding, height: textHeight)
     }
 
     required init?(coder: NSCoder) { fatalError("unavailable") }

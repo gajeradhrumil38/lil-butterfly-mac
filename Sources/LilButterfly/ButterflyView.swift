@@ -6,12 +6,19 @@ final class ButterflyView: NSView {
     private let rightWing = CALayer()
 
     init(center: CGPoint, pinnedAssetIndex: Int?, displayWidth: CGFloat = 56) {
-        let image = WingAssets.pick(pinnedIndex: pinnedAssetIndex)
+        let asset = WingAssets.pick(pinnedIndex: pinnedAssetIndex)
+        let image = asset.image
         let pointSize = CGSize(
             width: CGFloat(image.width) / WingAssets.rasterScale,
             height: CGFloat(image.height) / WingAssets.rasterScale
         )
-        let scale = displayWidth / pointSize.width
+        // Scale so the actual ink (wingspan), not the raw canvas width, ends
+        // up at displayWidth — the 9 source SVGs don't all fill their
+        // viewBox by the same margin, so scaling off the full canvas made
+        // some designs look noticeably smaller than others at the same
+        // nominal size.
+        let inkWidthPoints = max(asset.inkBounds.width / WingAssets.rasterScale, 1)
+        let scale = displayWidth / inkWidthPoints
         let displaySize = CGSize(width: pointSize.width * scale, height: pointSize.height * scale)
         let frame = CGRect(
             x: center.x - displaySize.width / 2,
@@ -21,24 +28,27 @@ final class ButterflyView: NSView {
         )
         super.init(frame: frame)
         wantsLayer = true
-        buildWings(from: image, displaySize: displaySize)
+        buildWings(from: image, inkBounds: asset.inkBounds, displaySize: displaySize)
         startFlutter()
     }
 
     required init?(coder: NSCoder) { fatalError("unavailable") }
 
-    private func buildWings(from image: CGImage, displaySize: CGSize) {
+    private func buildWings(from image: CGImage, inkBounds: CGRect, displaySize: CGSize) {
         guard let root = layer else { return }
 
         let fullWidth = image.width
         let fullHeight = image.height
-        let leftHalfPixels = fullWidth / 2
+        // Split at the ink content's own midpoint rather than the raw
+        // canvas midpoint, so the seam sits on the butterfly's actual body
+        // line even if the source SVG's padding isn't perfectly symmetric.
+        let splitX = min(max(Int(inkBounds.midX.rounded()), 1), fullWidth - 1)
         guard
-            let leftCG = image.cropping(to: CGRect(x: 0, y: 0, width: leftHalfPixels, height: fullHeight)),
-            let rightCG = image.cropping(to: CGRect(x: leftHalfPixels, y: 0, width: fullWidth - leftHalfPixels, height: fullHeight))
+            let leftCG = image.cropping(to: CGRect(x: 0, y: 0, width: splitX, height: fullHeight)),
+            let rightCG = image.cropping(to: CGRect(x: splitX, y: 0, width: fullWidth - splitX, height: fullHeight))
         else { return }
 
-        let leftWidth = displaySize.width * CGFloat(leftHalfPixels) / CGFloat(fullWidth)
+        let leftWidth = displaySize.width * CGFloat(splitX) / CGFloat(fullWidth)
         let rightWidth = displaySize.width - leftWidth
 
         leftWing.contents = leftCG
