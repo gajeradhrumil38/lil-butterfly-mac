@@ -27,7 +27,6 @@ final class BubbleView: NSView {
         effectView.blendingMode = .withinWindow
         effectView.state = .active
         effectView.wantsLayer = true
-        effectView.layer?.cornerRadius = 14
         effectView.layer?.masksToBounds = true
         effectView.layer?.borderWidth = 1
         effectView.layer?.borderColor = NSColor.white.withAlphaComponent(0.18).cgColor
@@ -46,7 +45,6 @@ final class BubbleView: NSView {
         tail.wantsLayer = true
         tail.layer?.backgroundColor = NSColor(calibratedWhite: 0.12, alpha: 0.82).cgColor
         tail.layer?.cornerRadius = 3
-        tail.frame = CGRect(x: -4, y: 18, width: 12, height: 12)
         tail.layer?.setAffineTransform(CGAffineTransform(rotationAngle: .pi / 4))
         addSubview(tail, positioned: .below, relativeTo: effectView)
 
@@ -108,7 +106,9 @@ final class BubbleView: NSView {
         let height = textHeight + 20
         frame = CGRect(x: 0, y: 0, width: width, height: height)
         effectView.frame = CGRect(x: 0, y: 0, width: width, height: height)
+        effectView.layer?.cornerRadius = height / 2 // full pill/capsule shape
         effectView.layer?.sublayers?.first(where: { $0 is CAGradientLayer })?.frame = effectView.bounds
+        tail.frame = CGRect(x: -4, y: height / 2 - 6, width: 12, height: 12) // vertically centered on the pill
         label.frame = CGRect(x: 14, y: 10, width: width - horizontalPadding, height: textHeight)
 
         setUpDots(in: label.frame)

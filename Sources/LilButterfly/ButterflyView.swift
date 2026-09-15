@@ -163,6 +163,37 @@ final class ButterflyView: NSView {
         layer?.removeAnimation(forKey: "hoverSway")
     }
 
+    /// A quick left-right-left flourish in place, meant to run at the same
+    /// moment the message card fades out — a little goodbye wave rather
+    /// than just sitting still while the card disappears. Purely visual
+    /// (like the hover orbit, this never changes the model centerPosition),
+    /// so call stopHover() first to avoid two animations competing for the
+    /// same "position" keyPath, and the actual departure flyPath should
+    /// start from `centerPosition` after this completes.
+    func farewellSweep(completion: @escaping () -> Void) {
+        guard let layer else { completion(); return }
+        let origin = frame.origin
+        let amplitude: CGFloat = 18
+        let duration: CFTimeInterval = 0.6
+
+        let path = CGMutablePath()
+        path.move(to: origin)
+        path.addLine(to: CGPoint(x: origin.x + amplitude, y: origin.y))
+        path.addLine(to: CGPoint(x: origin.x - amplitude, y: origin.y))
+        path.addLine(to: origin)
+
+        let sweep = CAKeyframeAnimation(keyPath: "position")
+        sweep.path = path
+        sweep.duration = duration
+        sweep.calculationMode = .cubic
+        sweep.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        layer.add(sweep, forKey: "farewellSweep")
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
+            completion()
+        }
+    }
+
     /// Moves the view from `from` to `to` (both centers, in superview
     /// coordinates) with easing and a perpendicular "wobble" so the path
     /// feels alive rather than mechanical. Sets the final model position

@@ -222,7 +222,10 @@ final class DockedOverlay {
                     self.closeWindow = nil
                     guard self.visitID == currentVisitID else { return }
                     bubble.removeFromSuperview()
-                    butterfly.stopHover()
+                }
+                butterfly.stopHover()
+                butterfly.farewellSweep {
+                    guard self.visitID == currentVisitID else { return }
                     self.isBusy = false
                 }
             }
@@ -243,7 +246,10 @@ final class DockedOverlay {
                         self.closeWindow = nil
                         guard self.visitID == currentVisitID else { return }
                         bubble.removeFromSuperview()
-                        butterfly.stopHover()
+                    }
+                    butterfly.stopHover()
+                    butterfly.farewellSweep {
+                        guard self.visitID == currentVisitID else { return }
                         butterfly.flyPath(from: inward, to: self.dockPoint(margin: 40), duration: 1.2, easeIn: true) {
                             guard self.visitID == currentVisitID else { return }
                             bubble.removeFromSuperview()
