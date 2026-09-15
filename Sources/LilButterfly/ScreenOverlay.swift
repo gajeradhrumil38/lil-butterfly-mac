@@ -102,34 +102,39 @@ final class ScreenOverlay {
             }
         }
         positionBubble(near: off)
-        closeWindow = BubbleCloseWindow(frame: closeTargetFrameOnScreen()) { [weak bubble] in
-            bubble?.dismiss()
+
+        // Shared by the resting timer and the close (x) button, so clicking
+        // close ends the visit the same way the timer would — the message
+        // disappears, then the butterfly flies off — just early. The guard
+        // means whichever fires first wins; the other becomes a no-op.
+        var didLeave = false
+        func leaveNow() {
+            guard !didLeave else { return }
+            didLeave = true
+            butterfly.stopHover()
+            bubble.fadeOut {
+                self.closeWindow?.orderOut(nil)
+                self.closeWindow = nil
+                bubble.removeFromSuperview()
+                butterfly.flyPath(from: butterfly.centerPosition, to: off, duration: 1.2, easeIn: true) {
+                    butterfly.removeFromSuperview()
+                    self.isBusy = false
+                }
+            }
         }
 
-        butterfly.flyPath(from: off, to: rest, duration: 1.4, easeIn: false) { [weak self] in
-            guard let self else { return }
+        closeWindow = BubbleCloseWindow(frame: closeTargetFrameOnScreen()) {
+            leaveNow()
+        }
+
+        butterfly.flyPath(from: off, to: rest, duration: 1.4, easeIn: false) {
             positionBubble(near: rest)
             butterfly.alphaValue = 1
             butterfly.startHover()
             bubble.fadeIn()
 
             DispatchQueue.main.asyncAfter(deadline: .now() + restingSeconds) {
-                // The butterfly does a little left-right-left goodbye sweep
-                // at the exact moment the message fades out. Both share
-                // ButterflyView.farewellDuration so they always span the
-                // same window instead of the fade finishing first.
-                bubble.fadeOut(duration: ButterflyView.farewellDuration) {
-                    self.closeWindow?.orderOut(nil)
-                    self.closeWindow = nil
-                    bubble.removeFromSuperview()
-                }
-                butterfly.stopHover()
-                butterfly.farewellSweep(distance: bubble.frame.width + 40) {
-                    butterfly.flyPath(from: rest, to: off, duration: 1.2, easeIn: true) {
-                        butterfly.removeFromSuperview()
-                        self.isBusy = false
-                    }
-                }
+                leaveNow()
             }
         }
     }

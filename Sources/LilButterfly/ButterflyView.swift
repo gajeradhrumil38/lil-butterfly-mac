@@ -163,59 +163,6 @@ final class ButterflyView: NSView {
         layer?.removeAnimation(forKey: "hoverSway")
     }
 
-    /// A goodbye sweep that actually crosses the message card — out to one
-    /// side, past the card, and back — timed to run at the same moment the
-    /// card fades out, so the card is still visible while the butterfly
-    /// passes by/under it, rather than the butterfly just wiggling in
-    /// place. `distance` should span past the card's far edge (its caller
-    /// knows the card's width and which side it's on). Dips slightly on
-    /// the crossing passes so it reads as ducking under the card rather
-    /// than flying through the text. Purely visual (like the hover orbit,
-    /// this never changes the model centerPosition), so call stopHover()
-    /// first to avoid two animations competing for the same "position"
-    /// keyPath, and the actual departure flyPath should start from
-    /// `centerPosition` after this completes.
-    /// Shared with callers (e.g. bubble.fadeOut(duration:)) so the card's
-    /// fade and this sweep always span the exact same window, instead of
-    /// two independently-tuned durations silently drifting apart — which is
-    /// exactly what happened before: the card (0.4s fade) had long finished
-    /// disappearing before the sweep (at the time, 1.1s) ever reached it.
-    static let farewellDuration: CFTimeInterval = 1.8
-
-    func farewellSweep(distance: CGFloat, completion: @escaping () -> Void) {
-        guard let layer else { completion(); return }
-        let origin = frame.origin
-        let dip: CGFloat = 14
-        let duration: CFTimeInterval = Self.farewellDuration
-
-        // A sine-based path rather than 3 straight line segments: x traces
-        // one full sine cycle (0 -> +distance -> 0 -> -distance -> 0), so
-        // velocity naturally eases to zero at each turnaround (sine's slope
-        // is zero at its peaks) instead of the sharp direction-reversal a
-        // straight there-and-back-and-back-again path has. The dip uses
-        // sin² so it peaks exactly at the same two moments the horizontal
-        // motion is furthest out, and is zero whenever back at rest.
-        let segments = 48
-        let path = CGMutablePath()
-        path.move(to: origin)
-        for i in 1...segments {
-            let t = CGFloat(i) / CGFloat(segments)
-            let x = origin.x + distance * sin(2 * .pi * t)
-            let y = origin.y - dip * pow(sin(2 * .pi * t), 2)
-            path.addLine(to: CGPoint(x: x, y: y))
-        }
-
-        let sweep = CAKeyframeAnimation(keyPath: "position")
-        sweep.path = path
-        sweep.duration = duration
-        sweep.calculationMode = .cubic
-        layer.add(sweep, forKey: "farewellSweep")
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
-            completion()
-        }
-    }
-
     /// Moves the view from `from` to `to` (both centers, in superview
     /// coordinates) with easing and a perpendicular "wobble" so the path
     /// feels alive rather than mechanical. Sets the final model position

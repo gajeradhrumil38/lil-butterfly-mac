@@ -6,7 +6,6 @@ final class BubbleView: NSView {
     private let label = NSTextField(labelWithString: "")
     private let tail = NSView()
     private let dotsContainer = NSView()
-    private var didDismiss = false
     private var didRevealText = false
 
     /// The only interactive region gets its own tiny window so the
@@ -153,7 +152,7 @@ final class BubbleView: NSView {
 
     /// Cross-fades from the typing dots to the actual message text.
     private func revealText() {
-        guard !didDismiss, !didRevealText else { return }
+        guard !didRevealText else { return }
         didRevealText = true
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.25
@@ -166,15 +165,6 @@ final class BubbleView: NSView {
 
     func pointTailTowardButterfly(onRight: Bool) {
         tail.frame.origin.x = onRight ? frame.width - 8 : -4
-    }
-
-    func dismiss() {
-        guard !didDismiss else { return }
-        didDismiss = true
-        NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.2
-            animator().alphaValue = 0
-        }, completionHandler: { [weak self] in self?.removeFromSuperview() })
     }
 
     func fadeIn() {
@@ -191,9 +181,9 @@ final class BubbleView: NSView {
         }
     }
 
-    func fadeOut(duration: CFTimeInterval = 0.4, completion: @escaping () -> Void) {
+    func fadeOut(completion: @escaping () -> Void) {
         NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = duration
+            ctx.duration = 0.4
             animator().alphaValue = 0
         }, completionHandler: completion)
     }

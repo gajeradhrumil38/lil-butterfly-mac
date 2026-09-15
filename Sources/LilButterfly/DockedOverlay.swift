@@ -206,27 +206,38 @@ final class DockedOverlay {
             self.updateHandleWindowFrame()
         }
         positionBubble(near: butterfly.centerPosition)
-        closeWindow = BubbleCloseWindow(frame: closeTargetFrameOnScreen()) { [weak bubble] in
-            bubble?.dismiss()
+
+        // leaveNow is reassigned below once we know which variant is
+        // running (it differs in whether the butterfly flies anywhere
+        // afterward), but the close button is wired up once, up front, so
+        // it always calls whatever leaveNow currently is — ending the
+        // visit the same way the resting timer would, just early: the
+        // message fades, then (if applicable) the butterfly departs.
+        var didLeave = false
+        var leaveNow: () -> Void = {}
+        closeWindow = BubbleCloseWindow(frame: closeTargetFrameOnScreen()) {
+            leaveNow()
         }
 
         if Bool.random() {
             butterfly.alphaValue = 1
             butterfly.startHover()
             bubble.fadeIn()
-            DispatchQueue.main.asyncAfter(deadline: .now() + restingSeconds) {
-                guard self.visitID == currentVisitID else { return }
-                bubble.fadeOut(duration: ButterflyView.farewellDuration) {
+
+            leaveNow = {
+                guard !didLeave, self.visitID == currentVisitID else { return }
+                didLeave = true
+                butterfly.stopHover()
+                bubble.fadeOut {
                     self.closeWindow?.orderOut(nil)
                     self.closeWindow = nil
                     guard self.visitID == currentVisitID else { return }
                     bubble.removeFromSuperview()
-                }
-                butterfly.stopHover()
-                butterfly.farewellSweep(distance: bubble.frame.width + 40) {
-                    guard self.visitID == currentVisitID else { return }
                     self.isBusy = false
                 }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + restingSeconds) {
+                leaveNow()
             }
         } else {
             let dockSpot = butterfly.centerPosition
@@ -238,24 +249,25 @@ final class DockedOverlay {
                 butterfly.alphaValue = 1
                 butterfly.startHover()
                 bubble.fadeIn()
-                DispatchQueue.main.asyncAfter(deadline: .now() + restingSeconds) {
-                    guard self.visitID == currentVisitID else { return }
-                    bubble.fadeOut(duration: ButterflyView.farewellDuration) {
+
+                leaveNow = {
+                    guard !didLeave, self.visitID == currentVisitID else { return }
+                    didLeave = true
+                    butterfly.stopHover()
+                    bubble.fadeOut {
                         self.closeWindow?.orderOut(nil)
                         self.closeWindow = nil
                         guard self.visitID == currentVisitID else { return }
                         bubble.removeFromSuperview()
-                    }
-                    butterfly.stopHover()
-                    butterfly.farewellSweep(distance: bubble.frame.width + 40) {
-                        guard self.visitID == currentVisitID else { return }
-                        butterfly.flyPath(from: inward, to: self.dockPoint(margin: 40), duration: 1.2, easeIn: true) {
+                        butterfly.flyPath(from: butterfly.centerPosition, to: self.dockPoint(margin: 40), duration: 1.2, easeIn: true) {
                             guard self.visitID == currentVisitID else { return }
-                            bubble.removeFromSuperview()
                             self.isBusy = false
                             self.updateHandleWindowFrame()
                         }
                     }
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + restingSeconds) {
+                    leaveNow()
                 }
             }
         }
