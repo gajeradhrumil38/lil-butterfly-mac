@@ -83,7 +83,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func rebuildMenu(_ menu: NSMenu) {
         menu.removeAllItems()
-        menu.addItem(NSMenuItem(title: "Lil Butterfly", action: nil, keyEquivalent: "")); menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Butterfly", action: nil, keyEquivalent: "")); menu.addItem(.separator())
         let countdown: String
         if config.paused { countdown = "Paused" }
         else if config.isQuietHour() { countdown = "Quiet hours (gentle mode — rare, soft messages)" }
@@ -165,7 +165,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     if showResult {
                         if let release {
                             let alert = NSAlert()
-                            alert.messageText = "A new Lil Butterfly is ready"
+                            alert.messageText = "A new Butterfly is ready"
                             alert.informativeText = "Version \(release.version) is available. Open the download page to install it."
                             alert.addButton(withTitle: "Open Download Page")
                             alert.addButton(withTitle: "Later")
@@ -173,7 +173,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                                 NSWorkspace.shared.open(release.htmlURL)
                             }
                         } else {
-                            self.showUpdateMessage("Lil Butterfly is up to date.")
+                            self.showUpdateMessage("Butterfly is up to date.")
                         }
                     }
                 case .failure(let error) where showResult:

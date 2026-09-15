@@ -30,7 +30,7 @@ a { color: inherit; }
 .hero { min-height: 650px; display: grid; grid-template-columns: 1fr .9fr; align-items: center; gap: 4rem; padding: 74px 0 80px; }
 .eyebrow { color: var(--pink); font-size: .73rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
 .dot { display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: var(--pink); box-shadow: 0 0 16px var(--pink); }
-h1 { margin: .35rem 0 1rem; font-size: clamp(5rem, 13vw, 9.3rem); line-height: .82; letter-spacing: -.09em; font-weight: 700; }
+h1 { margin: .35rem 0 1rem; font-size: clamp(4.2rem, 9vw, 7rem); line-height: .84; letter-spacing: -.075em; font-weight: 700; }
 .wordmark { display: inline-block; margin-left: .16em; font-size: .27em; letter-spacing: 0; vertical-align: 1.3em; filter: drop-shadow(0 0 14px rgba(255, 183, 217, .65)); }
 .lede { max-width: 510px; margin: 0; color: var(--muted); font-size: clamp(1.15rem, 2.4vw, 1.55rem); letter-spacing: -.02em; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 2.1rem; }

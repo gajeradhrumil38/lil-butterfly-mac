@@ -4,21 +4,41 @@
             "type": "swift",
             "request": "launch",
             "args": [],
-            "cwd": "${workspaceFolder:LilButterflyMac}",
-            "name": "Debug LilButterfly",
-            "target": "LilButterfly",
+            "cwd": "${workspaceFolder}",
+            "name": "Debug Butterfly",
+            "target": "Butterfly",
             "configuration": "debug",
-            "preLaunchTask": "swift: Build Debug LilButterfly"
+            "preLaunchTask": "swift: Build Debug Butterfly"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "name": "Release Butterfly",
+            "target": "Butterfly",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release Butterfly"
         },
         {
             "type": "swift",
             "request": "launch",
             "args": [],
             "cwd": "${workspaceFolder:LilButterflyMac}",
-            "name": "Release LilButterfly",
-            "target": "LilButterfly",
+            "name": "Debug Butterfly",
+            "target": "Butterfly",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug Butterfly"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:LilButterflyMac}",
+            "name": "Release Butterfly",
+            "target": "Butterfly",
             "configuration": "release",
-            "preLaunchTask": "swift: Build Release LilButterfly"
+            "preLaunchTask": "swift: Build Release Butterfly"
         }
     ]
 }

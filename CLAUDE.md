@@ -1,4 +1,4 @@
-# CLAUDE.md — lil butterfly (native macOS)
+# CLAUDE.md — Butterfly (native macOS)
 
 Read this first before doing anything else.
 
@@ -41,7 +41,7 @@ data, never visually verified).
 ## Architecture
 
 - `Package.swift` — SPM manifest, macOS 13+ target, single executable
-  target `LilButterfly`.
+  target `Butterfly`.
 - `Sources/LilButterfly/main.swift` — entry point. Sets `.accessory`
   activation policy (no Dock icon) and calls `NSApplication.run()`.
 - `AppDelegate.swift` — owns the `NSStatusItem` (🦋 menu bar icon) and its
@@ -74,9 +74,9 @@ data, never visually verified).
   text, simple alpha fade in/out via `NSAnimationContext`.
 - `Config.swift` — `Codable` struct (min/max minutes, quiet hours,
   paused, messages) with a `ConfigStore` that persists it as JSON under
-  `~/Library/Application Support/LilButterfly/config.json`.
+  `~/Library/Application Support/Butterfly/config.json`.
 - `scripts/make_app_bundle.sh` — optional packaging: builds a release
-  binary and wraps it into a minimal `LilButterfly.app` with `LSUIElement`
+  binary and wraps it into a minimal `Butterfly.app` with `LSUIElement`
   set, for dragging into `/Applications`.
 
 No backend or telemetry. The only network call is the optional public GitHub
@@ -86,7 +86,7 @@ Releases update check; there are no analytics calls.
 
 1. Check if this directory is already a git repo (`git status`). If not,
    `git init`.
-2. Add a `.gitignore` covering `.build/`, `.swiftpm/`, and `LilButterfly.app`
+2. Add a `.gitignore` covering `.build/`, `.swiftpm/`, and `Butterfly.app`
    if one doesn't already exist.
 3. Stage and commit everything as the initial commit.
 4. Create a GitHub repo using the `gh` CLI (assume the user is already

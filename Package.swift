@@ -2,13 +2,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "LilButterfly",
+    name: "Butterfly",
     platforms: [
         .macOS(.v13)
     ],
     targets: [
         .executableTarget(
-            name: "LilButterfly",
+            name: "Butterfly",
             path: "Sources/LilButterfly",
             resources: [
                 .copy("Resources/Wings")

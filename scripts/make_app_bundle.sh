@@ -1,6 +1,6 @@
 #!/bin/bash
 # Builds a release binary and wraps it into a minimal, double-clickable
-# LilButterfly.app you can drag into /Applications. Not required for
+# Butterfly.app you can drag into /Applications. Not required for
 # day-to-day development — `swift run` (or Run in Xcode) is enough for that.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -9,11 +9,11 @@ APP_VERSION="${APP_VERSION:-1.0.0}"
 
 swift build -c release
 
-APP="LilButterfly.app"
+APP="Butterfly.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
-cp .build/release/LilButterfly "$APP/Contents/MacOS/LilButterfly"
-cp -R .build/release/LilButterfly_LilButterfly.bundle "$APP/Contents/LilButterfly_LilButterfly.bundle"
+cp .build/release/Butterfly "$APP/Contents/MacOS/Butterfly"
+cp -R .build/release/Butterfly_Butterfly.bundle "$APP/Contents/Butterfly_Butterfly.bundle"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -21,11 +21,11 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <plist version="1.0">
 <dict>
   <key>CFBundleName</key>
-  <string>Lil Butterfly</string>
+  <string>Butterfly</string>
   <key>CFBundleIdentifier</key>
-  <string>com.you.lilbutterfly</string>
+  <string>com.kavii.butterfly</string>
   <key>CFBundleExecutable</key>
-  <string>LilButterfly</string>
+  <string>Butterfly</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
@@ -33,13 +33,13 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleVersion</key>
   <string>${APP_VERSION}</string>
   <key>CFBundleDisplayName</key>
-  <string>Lil Butterfly</string>
+  <string>Butterfly</string>
   <key>LSMinimumSystemVersion</key>
   <string>13.0</string>
   <key>LSUIElement</key>
   <true/>
   <key>NSCalendarsUsageDescription</key>
-  <string>Lil Butterfly uses your calendar only when you enable meeting reminders.</string>
+  <string>Butterfly uses your calendar only when you enable meeting reminders.</string>
 </dict>
 </plist>
 PLIST

@@ -33,7 +33,7 @@ final class UpdateChecker {
 
         var request = URLRequest(url: url)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        request.setValue("LilButterfly/\(currentVersion)", forHTTPHeaderField: "User-Agent")
+        request.setValue("Butterfly/\(currentVersion)", forHTTPHeaderField: "User-Agent")
 
         URLSession.shared.dataTask(with: request) { [currentVersion] data, response, error in
             if let error {

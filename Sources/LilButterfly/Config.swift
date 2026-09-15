@@ -347,12 +347,22 @@ extension Config {
 
 enum ConfigStore {
     private static var fileURL: URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let dir = base.appendingPathComponent("LilButterfly", isDirectory: true)
-        if !FileManager.default.fileExists(atPath: dir.path) {
-            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let fileManager = FileManager.default
+        let base = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let dir = base.appendingPathComponent("Butterfly", isDirectory: true)
+        if !fileManager.fileExists(atPath: dir.path) {
+            try? fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
         }
-        return dir.appendingPathComponent("config.json")
+
+        let current = dir.appendingPathComponent("config.json")
+        let legacy = base
+            .appendingPathComponent("LilButterfly", isDirectory: true)
+            .appendingPathComponent("config.json")
+        if !fileManager.fileExists(atPath: current.path),
+           fileManager.fileExists(atPath: legacy.path) {
+            try? fileManager.copyItem(at: legacy, to: current)
+        }
+        return current
     }
 
     static func load() -> Config {

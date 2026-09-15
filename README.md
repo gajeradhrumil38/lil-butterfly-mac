@@ -1,6 +1,6 @@
-# lil butterfly 🦋 (native macOS)
+# Butterfly 🦋
 
-**Kavii is ready to install:** [open the download page](https://gajeradhrumil38.github.io/lil-butterfly-mac/) · [latest release](https://github.com/gajeradhrumil38/lil-butterfly-mac/releases/latest) · [installation guide](INSTALL.md)
+**Butterfly is ready to install:** [open the download page](https://gajeradhrumil38.github.io/lil-butterfly-mac/) · [latest release](https://github.com/gajeradhrumil38/lil-butterfly-mac/releases/latest) · [simple installation guide](INSTALL.md)
 
 Same idea as before, rewritten as a native Swift/AppKit app instead of
 Electron — lighter, no npm/node install issues, and more precise control
@@ -25,7 +25,7 @@ the center of your screen — waits about 10 seconds, then flies back out.
   apps; optional calendar-based meeting reminders are off by default. The
   first launch and every resume begin with an immediate welcome visit.
 - No telemetry or account tracking. The only optional network request checks
-  the public GitHub Releases endpoint so Kavii can tell you when an update is
+  the public GitHub Releases endpoint so Butterfly can tell you when an update is
   available.
 
 ## Requirements
@@ -52,8 +52,8 @@ now"** to test immediately instead of waiting.
 ## Install a release
 
 For a normal installation, download the ZIP for your Mac from the
-[Kavii download page](https://gajeradhrumil38.github.io/lil-butterfly-mac/),
-unzip it, and drag LilButterfly.app into Applications. See
+[Butterfly download page](https://gajeradhrumil38.github.io/lil-butterfly-mac/),
+unzip it, and drag Butterfly.app into Applications. See
 [INSTALL.md](INSTALL.md) for Gatekeeper, updates, troubleshooting, and the
 maintainer release checklist.
 
@@ -61,7 +61,7 @@ maintainer release checklist.
 
 - **Messages / frequency / quiet hours defaults**: `Sources/LilButterfly/Config.swift`
   (`Config.default`). After first run, live edits from the menu are saved to
-  `~/Library/Application Support/LilButterfly/config.json` — edit that file
+  `~/Library/Application Support/Butterfly/config.json` — edit that file
   directly any time for things not exposed in the menu (like the message
   list).
 - **Look of the butterfly**: the 9 designs live in
@@ -81,16 +81,17 @@ maintainer release checklist.
 APP_VERSION=1.0.0 ./scripts/make_app_bundle.sh
 ```
 
-This builds a release binary and wraps it into `LilButterfly.app`, which you
+This builds a release binary and wraps it into `Butterfly.app`, which you
 can drag into `/Applications`. It sets `LSUIElement` in `Info.plist` so it
 never shows a Dock icon even before the app's own code runs.
 
 To make it launch automatically at login: System Settings → General → Login
-Items, and add `LilButterfly.app` once it's in `/Applications`.
+Items, and add `Butterfly.app` once it's in `/Applications`.
 
-Tagged releases are built automatically for Apple Silicon and Intel by
-.github/workflows/release.yml. Push a tag such as v1.0.1 to publish both ZIPs
-and make the update available to existing installations.
+Tagged releases are built automatically as one universal Apple Silicon and
+Intel download by .github/workflows/release.yml. Push a tag such as v1.0.1
+to publish the ZIP and make the update available to existing installations.
+The short maintainer checklist lives in [RELEASE.md](RELEASE.md).
 
 ## How it works, briefly
 
