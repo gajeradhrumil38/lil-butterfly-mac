@@ -17,10 +17,10 @@ final class OverlayWindow: NSWindow {
         isOpaque = false
         backgroundColor = .clear
         hasShadow = false
-        // The host view returns a hit only for BubbleView, so the butterfly
-        // and every other pixel remain click-through while the card's close
-        // mark can still be used.
-        ignoresMouseEvents = false
+        // This window covers the whole screen, so it must always remain
+        // click-through. The message close mark uses a separate, tiny window
+        // instead of making this full-screen window interactive.
+        ignoresMouseEvents = true
         isMovableByWindowBackground = false
         level = .screenSaver
         collectionBehavior = [
@@ -30,7 +30,7 @@ final class OverlayWindow: NSWindow {
             .fullScreenAuxiliary,
         ]
 
-        let hostView = ClickThroughHostView(frame: NSRect(origin: .zero, size: screen.frame.size))
+        let hostView = NSView(frame: NSRect(origin: .zero, size: screen.frame.size))
         hostView.wantsLayer = true
         contentView = hostView
 
@@ -41,13 +41,4 @@ final class OverlayWindow: NSWindow {
     // even if something in AppKit tries to make it key.
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
-}
-
-private final class ClickThroughHostView: NSView {
-    override func hitTest(_ point: NSPoint) -> NSView? {
-        guard subviews.contains(where: { view in
-            view is BubbleView && view.frame.contains(point)
-        }) else { return nil }
-        return super.hitTest(point)
-    }
 }

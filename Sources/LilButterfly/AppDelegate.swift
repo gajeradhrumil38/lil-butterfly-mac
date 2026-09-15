@@ -19,19 +19,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem.button?.title = "🦋"
         let menu = NSMenu(); menu.delegate = self; statusItem.menu = menu
         rebuildMenu(menu); scheduleNext(); updateMeetingReminderTimer()
-        if !config.hasStarted {
+        if !config.hasStarted, fireVisit() {
             config.hasStarted = true
             ConfigStore.save(config)
-            fireVisit()
         }
     }
 
     @objc private func rebuildOverlays() {
+        overlays.forEach { $0.stop() }
+        overlays.removeAll()
         dockedOverlay?.stop()
         dockedOverlay = nil
         if config.mode == "docked" {
-            overlays = []
-            if let main = NSScreen.main {
+            if let main = preferredScreen {
                 let docked = DockedOverlay(screen: main, edge: ScreenEdge(rawValue: config.dockEdge) ?? .right)
                 docked.parkNow(pinnedAssetIndex: config.pinnedAssetIndex); dockedOverlay = docked
             }
@@ -46,13 +46,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         scheduleTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in self?.fireVisit(); self?.scheduleNext() }
     }
 
-    private func fireVisit() {
-        guard !config.paused, !config.isQuietHour() else { return }
-        guard !config.suppressDuringMeetings ||
-                (!MeetingDetector.isMeetingAppActive && !meetingCalendar.isVideoMeetingActive()) else { return }
+    @discardableResult
+    private func fireVisit(manualOverride: Bool = false) -> Bool {
+        guard manualOverride || (!config.paused && !config.isQuietHour()) else { return false }
+        guard manualOverride || !config.suppressDuringMeetings ||
+                (!MeetingDetector.isMeetingAppActive && !meetingCalendar.isVideoMeetingActive()) else { return false }
         let message = config.randomMessage()
-        if config.mode == "docked" { dockedOverlay?.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex) }
-        else if let overlay = overlays.filter({ $0.isAvailable }).randomElement() { overlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex) }
+        if config.mode == "docked" {
+            guard let dockedOverlay else { return false }
+            dockedOverlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex)
+            return true
+        }
+        guard let overlay = overlays.filter({ $0.isAvailable }).randomElement() else { return false }
+        overlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex)
+        return true
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) { rebuildMenu(menu) }
@@ -109,7 +116,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let item = NSMenuItem(title: title, action: #selector(frequencyTapped(_:)), keyEquivalent: ""); item.target = self; item.representedObject = [min, max]; item.state = config.customIntervalSeconds == nil && config.minMinutes == min && config.maxMinutes == max ? .on : .off; menu.addItem(item)
     }
 
-    @objc private func showNowTapped() { fireVisit() }
+    @objc private func showNowTapped() { _ = fireVisit(manualOverride: true) }
     @objc private func togglePauseTapped() {
         let wasPaused = config.paused
         config.paused.toggle()
@@ -133,9 +140,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func kaviiTapped() {
-        guard let screen = NSScreen.main else { return }
+        guard let screen = preferredScreen else { return }
         if kaviiRevealOverlay == nil { kaviiRevealOverlay = KaviiRevealOverlay(screen: screen) }
         kaviiRevealOverlay?.show()
+    }
+
+    /// Menu-bar apps do not always have a key window, so NSScreen.main can be
+    /// nil. The first screen is the reliable fallback for docked/reveal UI.
+    private var preferredScreen: NSScreen? {
+        NSScreen.main ?? NSScreen.screens.first
     }
 
     private func updateMeetingReminderTimer() {

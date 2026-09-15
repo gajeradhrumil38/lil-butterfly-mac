@@ -38,6 +38,7 @@ final class ScreenOverlay {
     private let window: OverlayWindow
     private let screenFrame: CGRect
     private var isBusy = false
+    private var closeWindow: BubbleCloseWindow?
 
     init(screen: NSScreen) {
         self.window = OverlayWindow(screen: screen)
@@ -45,6 +46,17 @@ final class ScreenOverlay {
     }
 
     var isAvailable: Bool { !isBusy }
+
+    func stop() {
+        isBusy = false
+        closeWindow?.orderOut(nil)
+        closeWindow = nil
+        window.contentView?.subviews.forEach {
+            $0.layer?.removeAllAnimations()
+            $0.removeFromSuperview()
+        }
+        window.orderOut(nil)
+    }
 
     func visit(message: String, pinnedAssetIndex: Int? = nil) {
         guard !isBusy, let host = window.contentView else { return }
@@ -61,6 +73,16 @@ final class ScreenOverlay {
         let bubble = BubbleView(message: message)
         host.addSubview(bubble)
 
+        func closeTargetFrameOnScreen() -> CGRect {
+            let target = bubble.closeTargetFrame
+            let targetInWindow = host.convert(
+                CGPoint(x: bubble.frame.minX + target.minX, y: bubble.frame.minY + target.minY),
+                to: nil
+            )
+            let targetOnScreen = window.convertPoint(toScreen: targetInWindow)
+            return CGRect(origin: targetOnScreen, size: target.size)
+        }
+
         func positionBubble(near point: CGPoint) {
             let onRightHalf = point.x > screenFrame.width / 2
             let x = onRightHalf
@@ -69,8 +91,15 @@ final class ScreenOverlay {
             let y = min(screenFrame.height - bubble.frame.height - 8, point.y - bubble.frame.height / 2 + 10)
             bubble.setFrameOrigin(CGPoint(x: x, y: max(8, y)))
             bubble.pointTailTowardButterfly(onRight: onRightHalf)
+
+            if let closeWindow = self.closeWindow {
+                closeWindow.setFrame(closeTargetFrameOnScreen(), display: true)
+            }
         }
         positionBubble(near: off)
+        closeWindow = BubbleCloseWindow(frame: closeTargetFrameOnScreen()) { [weak bubble] in
+            bubble?.dismiss()
+        }
 
         butterfly.flyPath(from: off, to: rest, duration: 1.4, easeIn: false) { [weak self] in
             guard let self else { return }
@@ -84,9 +113,13 @@ final class ScreenOverlay {
                 // both animations together prevents a detached-looking
                 // message that fades away before its butterfly departs.
                 bubble.fadeOut {
+                    self.closeWindow?.orderOut(nil)
+                    self.closeWindow = nil
                     bubble.removeFromSuperview()
                 }
                 butterfly.flyPath(from: rest, to: off, duration: 1.2, easeIn: true) {
+                    self.closeWindow?.orderOut(nil)
+                    self.closeWindow = nil
                     butterfly.removeFromSuperview()
                     bubble.removeFromSuperview()
                     self.isBusy = false

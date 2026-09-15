@@ -6,6 +6,7 @@ final class DockedOverlay {
     private let screenFrame: CGRect
     private var isBusy = false
     private var butterfly: ButterflyView?
+    private var closeWindow: BubbleCloseWindow?
     private var edge: ScreenEdge
     private var visitID = 0
 
@@ -22,6 +23,8 @@ final class DockedOverlay {
     func stop() {
         visitID += 1
         isBusy = false
+        closeWindow?.orderOut(nil)
+        closeWindow = nil
         window.contentView?.subviews.forEach { $0.removeFromSuperview() }
         butterfly?.layer?.removeAllAnimations()
         butterfly = nil
@@ -32,6 +35,9 @@ final class DockedOverlay {
 
     func updateEdge(_ edge: ScreenEdge) {
         self.edge = edge
+        // Do not tear down an active visit. The new edge will be used the
+        // next time the butterfly returns to its parked position.
+        guard !isBusy else { return }
         butterfly?.removeFromSuperview()
         butterfly = nil
     }
@@ -58,6 +64,16 @@ final class DockedOverlay {
         let bubble = BubbleView(message: message)
         host.addSubview(bubble)
 
+        func closeTargetFrameOnScreen() -> CGRect {
+            let target = bubble.closeTargetFrame
+            let targetInWindow = host.convert(
+                CGPoint(x: bubble.frame.minX + target.minX, y: bubble.frame.minY + target.minY),
+                to: nil
+            )
+            let targetOnScreen = window.convertPoint(toScreen: targetInWindow)
+            return CGRect(origin: targetOnScreen, size: target.size)
+        }
+
         func positionBubble(near point: CGPoint) {
             let onRight = point.x > screenFrame.width / 2
             let x = onRight ? point.x - butterfly.frame.width / 2 - bubble.frame.width - 10
@@ -66,16 +82,25 @@ final class DockedOverlay {
                         point.y - bubble.frame.height / 2 + 10)
             bubble.setFrameOrigin(CGPoint(x: x, y: max(8, y)))
             bubble.pointTailTowardButterfly(onRight: onRight)
+
+            if let closeWindow = self.closeWindow {
+                closeWindow.setFrame(closeTargetFrameOnScreen(), display: true)
+            }
+        }
+        positionBubble(near: butterfly.layer?.position ?? dockPoint(margin: 40))
+        closeWindow = BubbleCloseWindow(frame: closeTargetFrameOnScreen()) { [weak bubble] in
+            bubble?.dismiss()
         }
 
         let restingSeconds = 9.0
         if Bool.random() {
-            positionBubble(near: butterfly.layer?.position ?? dockPoint(margin: 40))
             butterfly.alphaValue = 1
             bubble.fadeIn()
             DispatchQueue.main.asyncAfter(deadline: .now() + restingSeconds) {
                 guard self.visitID == currentVisitID else { return }
                 bubble.fadeOut {
+                    self.closeWindow?.orderOut(nil)
+                    self.closeWindow = nil
                     guard self.visitID == currentVisitID else { return }
                     bubble.removeFromSuperview()
                     self.isBusy = false
@@ -93,11 +118,15 @@ final class DockedOverlay {
                 DispatchQueue.main.asyncAfter(deadline: .now() + restingSeconds) {
                     guard self.visitID == currentVisitID else { return }
                     bubble.fadeOut {
+                        self.closeWindow?.orderOut(nil)
+                        self.closeWindow = nil
                         guard self.visitID == currentVisitID else { return }
                         bubble.removeFromSuperview()
                     }
                     butterfly.flyPath(from: inward, to: self.dockPoint(margin: 40), duration: 1.2, easeIn: true) {
                         guard self.visitID == currentVisitID else { return }
+                        self.closeWindow?.orderOut(nil)
+                        self.closeWindow = nil
                         bubble.removeFromSuperview()
                         self.isBusy = false
                     }

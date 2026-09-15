@@ -15,10 +15,9 @@ enum MeetingDetector {
     private static let meetingNames = ["Zoom", "Zoom.us", "Microsoft Teams", "Google Meet"]
 
     static var isMeetingAppActive: Bool {
-        NSWorkspace.shared.runningApplications.contains { app in
-            if let bundleID = app.bundleIdentifier, meetingBundleIDs.contains(bundleID) { return true }
-            guard let name = app.localizedName else { return false }
-            return meetingNames.contains { name.localizedCaseInsensitiveCompare($0) == .orderedSame }
-        }
+        guard let app = NSWorkspace.shared.frontmostApplication else { return false }
+        if let bundleID = app.bundleIdentifier, meetingBundleIDs.contains(bundleID) { return true }
+        guard let name = app.localizedName else { return false }
+        return meetingNames.contains { name.localizedCaseInsensitiveCompare($0) == .orderedSame }
     }
 }

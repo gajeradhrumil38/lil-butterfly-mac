@@ -5,13 +5,12 @@ final class ButterflyView: NSView {
     private let leftWing = CALayer()
     private let rightWing = CALayer()
 
-    init(center: CGPoint, pinnedAssetIndex: Int?) {
+    init(center: CGPoint, pinnedAssetIndex: Int?, displayWidth: CGFloat = 56) {
         let image = WingAssets.pick(pinnedIndex: pinnedAssetIndex)
         let pointSize = CGSize(
             width: CGFloat(image.width) / WingAssets.rasterScale,
             height: CGFloat(image.height) / WingAssets.rasterScale
         )
-        let displayWidth: CGFloat = 56
         let scale = displayWidth / pointSize.width
         let displaySize = CGSize(width: pointSize.width * scale, height: pointSize.height * scale)
         let frame = CGRect(

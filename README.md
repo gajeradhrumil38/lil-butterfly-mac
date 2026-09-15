@@ -108,8 +108,8 @@ Items, and add `LilButterfly.app` once it's in `/Applications`.
 - `MeetingCalendar.swift` optionally reads local Calendar events, only after
   calendar reminders are enabled, to show a butterfly 15 minutes before a
   video meeting.
-- `KaviiRevealOverlay.swift` powers the `Kavii ✨` menu action: all bundled
-  butterfly designs gather briefly around the name in the center, then leave.
+- `KaviiRevealOverlay.swift` powers the `Kavii ✨` menu action: small butterflies
+  fly in and assemble the word "Kavii" themselves, then dissolve away.
 - `Config.swift` is a small `Codable` struct persisted as JSON in
   `Application Support`.
 

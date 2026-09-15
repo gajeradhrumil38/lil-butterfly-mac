@@ -4,9 +4,14 @@ final class BubbleView: NSView {
 
     private let effectView = NSVisualEffectView()
     private let label = NSTextField(labelWithString: "")
-    private let closeButton = NSButton()
     private let tail = NSView()
     private var didDismiss = false
+
+    /// The only interactive region gets its own tiny window so the
+    /// full-screen overlay can remain click-through.
+    var closeTargetFrame: CGRect {
+        CGRect(x: frame.width - 31, y: frame.height - 27, width: 28, height: 28)
+    }
 
     init(message: String) {
         super.init(frame: .zero)
@@ -17,6 +22,18 @@ final class BubbleView: NSView {
         effectView.wantsLayer = true
         effectView.layer?.cornerRadius = 14
         effectView.layer?.masksToBounds = true
+        effectView.layer?.borderWidth = 1
+        effectView.layer?.borderColor = NSColor.white.withAlphaComponent(0.18).cgColor
+        let sheen = CAGradientLayer()
+        sheen.colors = [
+            NSColor.white.withAlphaComponent(0.14).cgColor,
+            NSColor.white.withAlphaComponent(0.02).cgColor,
+            NSColor.clear.cgColor,
+        ]
+        sheen.locations = [0, 0.28, 0.72]
+        sheen.startPoint = CGPoint(x: 0.1, y: 1)
+        sheen.endPoint = CGPoint(x: 0.9, y: 0)
+        effectView.layer?.addSublayer(sheen)
         addSubview(effectView)
 
         tail.wantsLayer = true
@@ -44,15 +61,6 @@ final class BubbleView: NSView {
         label.alignment = .left
         addSubview(label)
 
-        closeButton.title = "×"
-        closeButton.bezelStyle = .inline
-        closeButton.isBordered = false
-        closeButton.font = NSFont.systemFont(ofSize: 15, weight: .medium)
-        closeButton.contentTintColor = .secondaryLabelColor
-        closeButton.target = self
-        closeButton.action = #selector(dismissTapped)
-        addSubview(closeButton)
-
         let maxWidth: CGFloat = 220
         label.preferredMaxLayoutWidth = maxWidth - 48
         label.sizeToFit()
@@ -60,8 +68,8 @@ final class BubbleView: NSView {
         let height = label.frame.height + 20
         frame = CGRect(x: 0, y: 0, width: width, height: height)
         effectView.frame = CGRect(x: 0, y: 0, width: width, height: height)
+        effectView.layer?.sublayers?.first(where: { $0 is CAGradientLayer })?.frame = effectView.bounds
         label.frame = CGRect(x: 14, y: 10, width: width - 42, height: label.frame.height)
-        closeButton.frame = CGRect(x: width - 27, y: height - 25, width: 20, height: 20)
     }
 
     required init?(coder: NSCoder) { fatalError("unavailable") }
@@ -70,7 +78,7 @@ final class BubbleView: NSView {
         tail.frame.origin.x = onRight ? frame.width - 8 : -4
     }
 
-    @objc private func dismissTapped() {
+    func dismiss() {
         guard !didDismiss else { return }
         didDismiss = true
         NSAnimationContext.runAnimationGroup({ context in
