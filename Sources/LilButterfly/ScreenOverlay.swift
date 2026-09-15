@@ -58,7 +58,7 @@ final class ScreenOverlay {
         window.orderOut(nil)
     }
 
-    func visit(message: String, pinnedAssetIndex: Int? = nil) {
+    func visit(message: String, pinnedAssetIndex: Int? = nil, displayWidth: CGFloat = ButterflySize.widths[ButterflySize.defaultIndex]) {
         guard !isBusy, let host = window.contentView else { return }
         isBusy = true
 
@@ -67,7 +67,7 @@ final class ScreenOverlay {
         let rest = edge.restPoint(in: screenFrame, margin: margin)
         let off = edge.offscreenPoint(in: screenFrame, restX: rest.x, restY: rest.y, margin: margin)
 
-        let butterfly = ButterflyView(center: off, pinnedAssetIndex: pinnedAssetIndex)
+        let butterfly = ButterflyView(center: off, pinnedAssetIndex: pinnedAssetIndex, displayWidth: displayWidth)
         host.addSubview(butterfly)
 
         let bubble = BubbleView(message: message)

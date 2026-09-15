@@ -1,11 +1,24 @@
 import AppKit
 
+/// The 4-5 sizes offered by the menu's size slider (Config.butterflySizeIndex
+/// picks one). `defaultIndex` matches the original hardcoded 56pt so
+/// existing configs and the Kavii reveal's own fixed 20pt stay unaffected.
+enum ButterflySize {
+    static let widths: [CGFloat] = [36, 46, 56, 70, 86]
+    static let labels: [String] = ["Small", "Cozy", "Default", "Large", "Extra Large"]
+    static let defaultIndex = 2
+
+    static func width(forIndex index: Int) -> CGFloat {
+        widths.indices.contains(index) ? widths[index] : widths[defaultIndex]
+    }
+}
+
 final class ButterflyView: NSView {
 
     private let leftWing = CALayer()
     private let rightWing = CALayer()
 
-    init(center: CGPoint, pinnedAssetIndex: Int?, displayWidth: CGFloat = 56) {
+    init(center: CGPoint, pinnedAssetIndex: Int?, displayWidth: CGFloat = ButterflySize.widths[ButterflySize.defaultIndex]) {
         let asset = WingAssets.pick(pinnedIndex: pinnedAssetIndex)
         let image = asset.image
         let pointSize = CGSize(

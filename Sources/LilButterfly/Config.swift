@@ -21,6 +21,8 @@ struct Config: Codable {
     /// edges), set by dragging it. nil = pick a random spot each time it
     /// parks, as before.
     var dockPositionFraction: Double?
+    /// Index into ButterflySize.widths, set by the menu's size slider.
+    var butterflySizeIndex: Int
 
     static var `default`: Config {
         Config(
@@ -75,7 +77,8 @@ struct Config: Codable {
             meetingReminderEnabled: false,
             meetingReminderMinutes: 15,
             hasStarted: false,
-            dockPositionFraction: nil
+            dockPositionFraction: nil,
+            butterflySizeIndex: ButterflySize.defaultIndex
         )
     }
 
@@ -112,7 +115,7 @@ extension Config {
         case minMinutes, maxMinutes, quietHoursEnabled, quietHoursStart, quietHoursEnd
         case paused, messages, mode, dockEdge, pinnedAssetIndex, customIntervalSeconds
         case suppressDuringMeetings, meetingReminderEnabled, meetingReminderMinutes
-        case hasStarted, dockPositionFraction
+        case hasStarted, dockPositionFraction, butterflySizeIndex
     }
 
     init(from decoder: Decoder) throws {
@@ -133,7 +136,8 @@ extension Config {
             meetingReminderEnabled: try c.decodeIfPresent(Bool.self, forKey: .meetingReminderEnabled) ?? false,
             meetingReminderMinutes: try c.decodeIfPresent(Int.self, forKey: .meetingReminderMinutes) ?? 15,
             hasStarted: try c.decodeIfPresent(Bool.self, forKey: .hasStarted) ?? false,
-            dockPositionFraction: try c.decodeIfPresent(Double.self, forKey: .dockPositionFraction)
+            dockPositionFraction: try c.decodeIfPresent(Double.self, forKey: .dockPositionFraction),
+            butterflySizeIndex: try c.decodeIfPresent(Int.self, forKey: .butterflySizeIndex) ?? ButterflySize.defaultIndex
         )
     }
 }

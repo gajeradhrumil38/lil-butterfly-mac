@@ -36,7 +36,7 @@ final class DockedOverlay {
         window.orderOut(nil)
     }
 
-    func parkNow(pinnedAssetIndex: Int?) { _ = ensureParked(pinnedAssetIndex: pinnedAssetIndex) }
+    func parkNow(pinnedAssetIndex: Int?, displayWidth: CGFloat) { _ = ensureParked(pinnedAssetIndex: pinnedAssetIndex, displayWidth: displayWidth) }
 
     func updateEdge(_ edge: ScreenEdge, positionFraction: Double?) {
         self.edge = edge
@@ -80,10 +80,10 @@ final class DockedOverlay {
         min(max(value, lower), upper)
     }
 
-    private func ensureParked(pinnedAssetIndex: Int?) -> ButterflyView? {
+    private func ensureParked(pinnedAssetIndex: Int?, displayWidth: CGFloat) -> ButterflyView? {
         if let butterfly { return butterfly }
         guard let host = window.contentView else { return nil }
-        let view = ButterflyView(center: dockPoint(margin: 40), pinnedAssetIndex: pinnedAssetIndex)
+        let view = ButterflyView(center: dockPoint(margin: 40), pinnedAssetIndex: pinnedAssetIndex, displayWidth: displayWidth)
         host.addSubview(view)
         butterfly = view
         attachHandleWindow()
@@ -171,9 +171,9 @@ final class DockedOverlay {
         handleWindow = nil
     }
 
-    func visit(message: String, pinnedAssetIndex: Int?) {
+    func visit(message: String, pinnedAssetIndex: Int?, displayWidth: CGFloat) {
         guard !isBusy, let host = window.contentView,
-              let butterfly = ensureParked(pinnedAssetIndex: pinnedAssetIndex) else { return }
+              let butterfly = ensureParked(pinnedAssetIndex: pinnedAssetIndex, displayWidth: displayWidth) else { return }
         isBusy = true
         visitID += 1
         let currentVisitID = visitID
