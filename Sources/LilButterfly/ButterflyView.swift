@@ -179,19 +179,29 @@ final class ButterflyView: NSView {
         guard let layer else { completion(); return }
         let origin = frame.origin
         let dip: CGFloat = 14
-        let duration: CFTimeInterval = 1.1
+        let duration: CFTimeInterval = 1.8
 
+        // A sine-based path rather than 3 straight line segments: x traces
+        // one full sine cycle (0 -> +distance -> 0 -> -distance -> 0), so
+        // velocity naturally eases to zero at each turnaround (sine's slope
+        // is zero at its peaks) instead of the sharp direction-reversal a
+        // straight there-and-back-and-back-again path has. The dip uses
+        // sin² so it peaks exactly at the same two moments the horizontal
+        // motion is furthest out, and is zero whenever back at rest.
+        let segments = 48
         let path = CGMutablePath()
         path.move(to: origin)
-        path.addLine(to: CGPoint(x: origin.x + distance, y: origin.y - dip))
-        path.addLine(to: CGPoint(x: origin.x - distance, y: origin.y - dip))
-        path.addLine(to: origin)
+        for i in 1...segments {
+            let t = CGFloat(i) / CGFloat(segments)
+            let x = origin.x + distance * sin(2 * .pi * t)
+            let y = origin.y - dip * pow(sin(2 * .pi * t), 2)
+            path.addLine(to: CGPoint(x: x, y: y))
+        }
 
         let sweep = CAKeyframeAnimation(keyPath: "position")
         sweep.path = path
         sweep.duration = duration
         sweep.calculationMode = .cubic
-        sweep.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
         layer.add(sweep, forKey: "farewellSweep")
 
         DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
