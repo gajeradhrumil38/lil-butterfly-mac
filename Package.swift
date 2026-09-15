@@ -11,7 +11,8 @@ let package = Package(
             name: "Butterfly",
             path: "Sources/LilButterfly",
             resources: [
-                .copy("Resources/Wings")
+                .copy("Resources/Wings"),
+                .copy("Resources/ICON.svg")
             ]
         )
     ]

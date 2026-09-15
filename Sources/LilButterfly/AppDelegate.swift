@@ -13,12 +13,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var remindedMeetingID: String?
     private var latestRelease: GitHubRelease?
     private lazy var updateChecker = UpdateChecker(currentVersion: installedVersion)
+    private lazy var regularStatusIcon = makeStatusIcon(updateAvailable: false)
+    private lazy var updateStatusIcon = makeStatusIcon(updateAvailable: true)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         rebuildOverlays()
         NotificationCenter.default.addObserver(self, selector: #selector(rebuildOverlays), name: NSApplication.didChangeScreenParametersNotification, object: nil)
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.title = "🦋"
+        configureStatusIcon(updateAvailable: false)
         let menu = NSMenu(); menu.delegate = self; statusItem.menu = menu
         rebuildMenu(menu); scheduleNext(); updateMeetingReminderTimer()
         checkForUpdates(showResult: false)
@@ -83,7 +85,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func rebuildMenu(_ menu: NSMenu) {
         menu.removeAllItems()
-        menu.addItem(NSMenuItem(title: "Butterfly", action: nil, keyEquivalent: "")); menu.addItem(.separator())
+        let headerItem = NSMenuItem(title: "Butterfly", action: nil, keyEquivalent: "")
+        headerItem.image = regularStatusIcon
+        menu.addItem(headerItem)
+        menu.addItem(.separator())
         let countdown: String
         if config.paused { countdown = "Paused" }
         else if config.isQuietHour() { countdown = "Quiet hours (gentle mode — rare, soft messages)" }
@@ -153,6 +158,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
     }
 
+    private func configureStatusIcon(updateAvailable: Bool) {
+        guard let button = statusItem.button else { return }
+        button.title = ""
+        button.image = updateAvailable ? updateStatusIcon : regularStatusIcon
+        button.imagePosition = .imageOnly
+        button.toolTip = updateAvailable ? "Butterfly — update available" : "Butterfly"
+        button.setAccessibilityLabel(updateAvailable ? "Butterfly, update available" : "Butterfly")
+    }
+
+    private func makeStatusIcon(updateAvailable: Bool) -> NSImage {
+        let canvasSize = NSSize(width: 20, height: 18)
+        guard let url = Bundle.module.url(forResource: "ICON", withExtension: "svg"),
+              let source = NSImage(contentsOf: url) else {
+            let fallback = NSImage(systemSymbolName: "sparkles", accessibilityDescription: "Butterfly") ?? NSImage(size: canvasSize)
+            fallback.size = canvasSize
+            fallback.isTemplate = true
+            return fallback
+        }
+
+        let sourceAspect = source.size.width / max(source.size.height, 1)
+        let artworkHeight: CGFloat = 14
+        let artworkWidth = min(18, artworkHeight * sourceAspect)
+        let artworkRect = NSRect(
+            x: (canvasSize.width - artworkWidth) / 2,
+            y: (canvasSize.height - artworkHeight) / 2,
+            width: artworkWidth,
+            height: artworkHeight
+        )
+
+        let icon = NSImage(size: canvasSize, flipped: false) { _ in
+            source.draw(in: artworkRect, from: .zero, operation: .sourceOver, fraction: 1)
+            if updateAvailable {
+                NSColor.black.setFill()
+                NSBezierPath(ovalIn: NSRect(x: 15.5, y: 13.5, width: 4, height: 4)).fill()
+            }
+            return true
+        }
+        icon.isTemplate = true
+        icon.accessibilityDescription = updateAvailable ? "Butterfly, update available" : "Butterfly"
+        return icon
+    }
+
     private func checkForUpdates(showResult: Bool) {
         updateChecker.check { [weak self] result in
             DispatchQueue.main.async {
@@ -160,7 +207,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 switch result {
                 case .success(let release):
                     self.latestRelease = release
-                    self.statusItem?.button?.title = release == nil ? "🦋" : "🦋↑"
+                    self.configureStatusIcon(updateAvailable: release != nil)
                     if let menu = self.statusItem?.menu { self.rebuildMenu(menu) }
                     if showResult {
                         if let release {
