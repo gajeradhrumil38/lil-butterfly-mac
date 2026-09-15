@@ -26,6 +26,11 @@ final class RestingSliderView: NSView {
         slider.frame = CGRect(x: 36, y: 5, width: 178, height: 18)
         slider.minValue = Self.minSeconds
         slider.maxValue = Self.maxSeconds
+        slider.controlSize = .small
+        slider.trackFillColor = .controlAccentColor
+        if #available(macOS 26.0, *) {
+            slider.tintProminence = .primary
+        }
         slider.isContinuous = true
         slider.target = target
         slider.action = action

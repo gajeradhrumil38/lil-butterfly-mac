@@ -21,6 +21,11 @@ final class IntervalSliderView: NSView {
         slider.frame = CGRect(x: 36, y: 5, width: 178, height: 18)
         slider.minValue = 0
         slider.maxValue = 1
+        slider.controlSize = .small
+        slider.trackFillColor = .controlAccentColor
+        if #available(macOS 26.0, *) {
+            slider.tintProminence = .primary
+        }
         slider.isContinuous = true
         slider.target = target
         slider.action = action

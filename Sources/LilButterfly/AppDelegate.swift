@@ -115,6 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
 
         let frequencyMenu = NSMenu(title: "Visit Timing")
+        frequencyMenu.minimumWidth = 270
         addFrequencyItem(to: frequencyMenu, title: "Often · 20–40 min", min: 20, max: 40)
         addFrequencyItem(to: frequencyMenu, title: "Gentle · 45–90 min", min: 45, max: 90)
         addFrequencyItem(to: frequencyMenu, title: "Rare · 2–3 hr", min: 120, max: 180)
@@ -130,6 +131,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(frequencyItem)
 
         let movementMenu = NSMenu(title: "Movement")
+        movementMenu.minimumWidth = 230
         addModeItem(to: movementMenu, title: "Roam", mode: "roaming", symbol: "paperplane")
         addModeItem(to: movementMenu, title: "Dock", mode: "docked", symbol: "pin.fill")
         movementMenu.addItem(.separator())
@@ -160,6 +162,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(movementItem)
 
         let appearanceMenu = NSMenu(title: "Butterfly")
+        appearanceMenu.minimumWidth = 280
         addAssetItem(to: appearanceMenu, title: "Surprise Me", index: -1)
         for index in WingAssets.names().indices {
             addAssetItem(to: appearanceMenu, title: "Design \(index + 1)", index: index)
@@ -175,6 +178,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(appearanceItem)
 
         let messageMenu = NSMenu(title: "Message")
+        messageMenu.minimumWidth = 270
         let restingSlider = RestingSliderView(currentSeconds: config.restingSeconds, target: self, action: #selector(restingSliderMoved(_:)))
         let restingSliderItem = NSMenuItem()
         restingSliderItem.view = restingSlider
@@ -188,27 +192,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         addItem(to: menu, title: "Kavii", action: #selector(kaviiTapped), symbol: "wand.and.stars")
         menu.addItem(.separator())
 
-        let quietItem = addItem(
+        addToggle(
             to: menu,
-            title: "Quiet · \(config.quietHoursStart):00–\(config.quietHoursEnd):00",
-            action: #selector(toggleQuietHoursTapped),
-            symbol: "moon.stars"
+            title: "Quiet Hours",
+            detail: "\(config.quietHoursStart):00–\(config.quietHoursEnd):00",
+            symbol: "moon.stars",
+            isOn: config.quietHoursEnabled,
+            action: #selector(quietHoursSwitchChanged(_:))
         )
-        quietItem.state = config.quietHoursEnabled ? .on : .off
-        let meetingItem = addItem(
+        addToggle(
             to: menu,
             title: "Hide During Meetings",
-            action: #selector(toggleMeetingSuppressionTapped),
-            symbol: "video.slash"
+            detail: "Zoom · Teams · Meet",
+            symbol: "video.slash",
+            isOn: config.suppressDuringMeetings,
+            action: #selector(meetingSuppressionSwitchChanged(_:))
         )
-        meetingItem.state = config.suppressDuringMeetings ? .on : .off
-        let reminderItem = addItem(
+        addToggle(
             to: menu,
-            title: "Meeting Reminder · 15 min",
-            action: #selector(toggleMeetingReminderTapped),
-            symbol: "bell"
+            title: "Meeting Reminder",
+            detail: "15 min before",
+            symbol: "bell",
+            isOn: config.meetingReminderEnabled,
+            action: #selector(meetingReminderSwitchChanged(_:))
         )
-        reminderItem.state = config.meetingReminderEnabled ? .on : .off
         menu.addItem(.separator())
         addItem(to: menu, title: "Quit Butterfly", action: #selector(quitTapped), keyEquivalent: "q", symbol: "power")
     }
@@ -234,6 +241,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         item.representedObject = mode
         item.image = symbolImage(symbol)
         item.state = config.mode == mode ? .on : .off
+        menu.addItem(item)
+    }
+
+    private func addToggle(
+        to menu: NSMenu,
+        title: String,
+        detail: String,
+        symbol: String,
+        isOn: Bool,
+        action: Selector
+    ) {
+        let item = NSMenuItem()
+        item.view = MenuToggleView(
+            title: title,
+            detail: detail,
+            symbol: symbol,
+            isOn: isOn,
+            target: self,
+            action: action
+        )
         menu.addItem(item)
     }
 
@@ -394,10 +421,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func modeTapped(_ sender: NSMenuItem) { guard let mode = sender.representedObject as? String, mode != config.mode else { return }; config.mode = mode; ConfigStore.save(config); rebuildOverlays() }
     @objc private func dockEdgeTapped(_ sender: NSMenuItem) { guard let raw = sender.representedObject as? String, let edge = ScreenEdge(rawValue: raw) else { return }; config.dockEdge = raw; config.dockPositionFraction = nil; ConfigStore.save(config); dockedOverlay?.updateEdge(edge, positionFraction: nil) }
     @objc private func assetTapped(_ sender: NSMenuItem) { guard let index = sender.representedObject as? Int else { return }; config.pinnedAssetIndex = index == -1 ? nil : index; ConfigStore.save(config) }
-    @objc private func toggleQuietHoursTapped() { config.quietHoursEnabled.toggle(); ConfigStore.save(config) }
-    @objc private func toggleMeetingSuppressionTapped() { config.suppressDuringMeetings.toggle(); ConfigStore.save(config) }
-    @objc private func toggleMeetingReminderTapped() {
-        config.meetingReminderEnabled.toggle()
+
+    @objc private func quietHoursSwitchChanged(_ sender: NSSwitch) {
+        config.quietHoursEnabled = sender.state == .on
+        ConfigStore.save(config)
+    }
+
+    @objc private func meetingSuppressionSwitchChanged(_ sender: NSSwitch) {
+        config.suppressDuringMeetings = sender.state == .on
+        ConfigStore.save(config)
+    }
+
+    @objc private func meetingReminderSwitchChanged(_ sender: NSSwitch) {
+        config.meetingReminderEnabled = sender.state == .on
         ConfigStore.save(config)
         updateMeetingReminderTimer()
     }
