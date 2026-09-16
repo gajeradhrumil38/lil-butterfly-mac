@@ -175,13 +175,20 @@ final class DockedOverlay {
         handleWindow = nil
     }
 
-    func visit(message: String, pinnedAssetIndex: Int?, displayWidth: CGFloat, restingSeconds: Double, actionTitle: String? = nil, onTapped: (() -> Void)? = nil) {
+    func visit(message: String, pinnedAssetIndex: Int?, displayWidth: CGFloat, restingSeconds: Double, actionTitle: String? = nil, onTapped: (() -> Void)? = nil, checkIn: CheckInContent? = nil) {
         guard !isBusy, let host = window.contentView,
               let butterfly = ensureParked(pinnedAssetIndex: pinnedAssetIndex, displayWidth: displayWidth) else { return }
         isBusy = true
         visitID += 1
         let currentVisitID = visitID
-        let choiceLabels: [String] = actionTitle.map { [$0] } ?? []
+        let choiceLabels: [String]
+        if let actionTitle {
+            choiceLabels = [actionTitle]
+        } else if let checkIn {
+            choiceLabels = checkIn.choices.map { $0.label }
+        } else {
+            choiceLabels = []
+        }
         let bubble = BubbleView(message: message, choiceLabels: choiceLabels)
         host.addSubview(bubble)
 
@@ -233,7 +240,17 @@ final class DockedOverlay {
             butterfly.alphaValue = 1
             butterfly.startHover()
             bubble.fadeIn()
-            if let onTapped {
+            if let checkIn {
+                choiceWindows = checkIn.choices.enumerated().map { index, choice in
+                    ChoiceButtonWindow(frame: choiceFrameOnScreen(index), title: choice.label, style: .plainChip) {
+                        CheckInStore.record(style: checkIn.style.rawValue, choice: choice.label)
+                        bubble.revealReply(choice.replies.randomElement() ?? choice.replies[0])
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                            leaveNow()
+                        }
+                    }
+                }
+            } else if let onTapped {
                 let window = ChoiceButtonWindow(frame: choiceFrameOnScreen(0), title: actionTitle ?? "Update", style: .accentCapsule) {
                     leaveNow()
                     onTapped()
@@ -271,7 +288,17 @@ final class DockedOverlay {
                 butterfly.alphaValue = 1
                 butterfly.startHover()
                 bubble.fadeIn()
-                if let onTapped {
+                if let checkIn {
+                    self.choiceWindows = checkIn.choices.enumerated().map { index, choice in
+                        ChoiceButtonWindow(frame: choiceFrameOnScreen(index), title: choice.label, style: .plainChip) {
+                            CheckInStore.record(style: checkIn.style.rawValue, choice: choice.label)
+                            bubble.revealReply(choice.replies.randomElement() ?? choice.replies[0])
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                                leaveNow()
+                            }
+                        }
+                    }
+                } else if let onTapped {
                     let window = ChoiceButtonWindow(frame: choiceFrameOnScreen(0), title: actionTitle ?? "Update", style: .accentCapsule) {
                         leaveNow()
                         onTapped()
