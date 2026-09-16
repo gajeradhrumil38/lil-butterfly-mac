@@ -37,9 +37,6 @@ final class SizeSliderView: NSView {
         slider.maxValue = Double(ButterflySize.widths.count - 1)
         slider.controlSize = .small
         slider.trackFillColor = .controlAccentColor
-        if #available(macOS 26.0, *) {
-            slider.tintProminence = .primary
-        }
         slider.numberOfTickMarks = ButterflySize.widths.count
         slider.allowsTickMarkValuesOnly = true
         slider.isContinuous = true

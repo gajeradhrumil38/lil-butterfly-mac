@@ -73,7 +73,7 @@ final class UpdateChecker {
         version
             .split(separator: ".")
             .map { component in
-                Int(component.filter(\Character.isNumber)) ?? 0
+                Int(component.filter { $0.isNumber }) ?? 0
             }
     }
 
