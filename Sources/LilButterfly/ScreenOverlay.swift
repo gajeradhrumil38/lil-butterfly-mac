@@ -39,7 +39,7 @@ final class ScreenOverlay {
     private let screenFrame: CGRect
     private var isBusy = false
     private var closeWindow: BubbleCloseWindow?
-    private var actionButtonWindow: UpdateActionButtonWindow?
+    private var choiceWindows: [ChoiceButtonWindow] = []
 
     init(screen: NSScreen) {
         self.window = OverlayWindow(screen: screen)
@@ -52,8 +52,8 @@ final class ScreenOverlay {
         isBusy = false
         closeWindow?.orderOut(nil)
         closeWindow = nil
-        actionButtonWindow?.orderOut(nil)
-        actionButtonWindow = nil
+        choiceWindows.forEach { $0.orderOut(nil) }
+        choiceWindows.removeAll()
         window.contentView?.subviews.forEach {
             $0.layer?.removeAllAnimations()
             $0.removeFromSuperview()
@@ -80,7 +80,8 @@ final class ScreenOverlay {
         let butterfly = ButterflyView(center: off, pinnedAssetIndex: pinnedAssetIndex, displayWidth: displayWidth)
         host.addSubview(butterfly)
 
-        let bubble = BubbleView(message: message, actionTitle: actionTitle)
+        let choiceLabels: [String] = actionTitle.map { [$0] } ?? []
+        let bubble = BubbleView(message: message, choiceLabels: choiceLabels)
         host.addSubview(bubble)
 
         func bubbleLocalRectOnScreen(_ local: CGRect) -> CGRect {
@@ -93,9 +94,9 @@ final class ScreenOverlay {
         }
         func closeTargetFrameOnScreen() -> CGRect { bubbleLocalRectOnScreen(bubble.closeTargetFrame) }
         // Inside the same rounded-rect card, reserved by BubbleView's own
-        // layout when it's built with an actionTitle — not a separate
-        // floating pill below it.
-        func actionButtonFrameOnScreen() -> CGRect { bubbleLocalRectOnScreen(bubble.actionButtonFrame) }
+        // layout whenever it's built with one or more choiceLabels — not a
+        // separate floating pill below it.
+        func choiceFrameOnScreen(_ index: Int) -> CGRect { bubbleLocalRectOnScreen(bubble.choiceFrame(at: index)) }
 
         func positionBubble(near point: CGPoint) {
             let onRightHalf = point.x > screenFrame.width / 2
@@ -109,8 +110,8 @@ final class ScreenOverlay {
             if let closeWindow = self.closeWindow {
                 closeWindow.setFrame(closeTargetFrameOnScreen(), display: true)
             }
-            if let actionButtonWindow = self.actionButtonWindow {
-                actionButtonWindow.setFrame(actionButtonFrameOnScreen(), display: true)
+            for (index, window) in self.choiceWindows.enumerated() {
+                window.setFrame(choiceFrameOnScreen(index), display: true)
             }
         }
         positionBubble(near: off)
@@ -127,8 +128,8 @@ final class ScreenOverlay {
             bubble.fadeOut {
                 self.closeWindow?.orderOut(nil)
                 self.closeWindow = nil
-                self.actionButtonWindow?.orderOut(nil)
-                self.actionButtonWindow = nil
+                self.choiceWindows.forEach { $0.orderOut(nil) }
+                self.choiceWindows.removeAll()
                 bubble.removeFromSuperview()
                 butterfly.flyPath(from: butterfly.centerPosition, to: off, duration: 1.2, easeIn: true) {
                     butterfly.removeFromSuperview()
@@ -157,14 +158,15 @@ final class ScreenOverlay {
             // its own click" approach the close mark already uses, just
             // with a proper labeled control instead of an icon.
             if let onTapped {
-                self.actionButtonWindow = UpdateActionButtonWindow(
-                    frame: actionButtonFrameOnScreen(),
+                let window = ChoiceButtonWindow(
+                    frame: choiceFrameOnScreen(0),
                     title: actionTitle ?? "Update",
-                    onClick: {
-                        leaveNow()
-                        onTapped()
-                    }
-                )
+                    style: .accentCapsule
+                ) {
+                    leaveNow()
+                    onTapped()
+                }
+                self.choiceWindows = [window]
             }
             self.closeWindow = BubbleCloseWindow(frame: closeTargetFrameOnScreen()) {
                 leaveNow()
