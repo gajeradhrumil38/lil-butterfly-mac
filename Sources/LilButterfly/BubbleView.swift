@@ -10,9 +10,12 @@ final class BubbleView: NSView {
     private var didRevealText = false
     private var tailOnRight = false
 
-    /// Classic chat-bubble corner radius (not a full pill) — capped so short,
-    /// one-line messages don't turn back into a pill by accident.
-    private static let cornerRadius: CGFloat = 18
+    /// Classic chat-bubble corner radius (not a full pill). Deliberately well
+    /// under half the minimum card height (~36pt for a one-line message) so
+    /// even short messages keep visible flat edges instead of rounding back
+    /// into a capsule — a radius close to height/2 looked identical to the
+    /// old pill shape for exactly that common case.
+    private static let cornerRadius: CGFloat = 12
     private static let tailSpan: CGFloat = 16 // width of the tail's own frame
     private static let tailHeight: CGFloat = 16
 
