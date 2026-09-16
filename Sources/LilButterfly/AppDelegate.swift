@@ -95,9 +95,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         let message: String
         var onTapped: (() -> Void)?
+        var actionTitle: String?
+        // A button needs real time to notice and aim for, not the few
+        // seconds a one-line message normally gets — longer than whatever
+        // the user configured, specifically for this message.
+        var restingSeconds = config.restingSeconds
         if let pendingUpdate {
-            message = "A new Butterfly (v\(pendingUpdate.version)) is ready. Tap here to update 🦋⬆️"
+            message = "A new Butterfly (v\(pendingUpdate.version)) is ready."
+            actionTitle = "Update Now"
             onTapped = { [weak self] in self?.startSelfUpdate(release: pendingUpdate) }
+            restingSeconds = max(config.restingSeconds, 14)
         } else {
             // Quiet hours are gentle mode, not a hard stop: randomMessage
             // returns nil most of the time during that window instead (see
@@ -111,13 +118,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let dispatched: Bool
         if config.mode == "docked" {
             if let dockedOverlay {
-                dockedOverlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: config.restingSeconds, onTapped: onTapped)
+                dockedOverlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: restingSeconds, actionTitle: actionTitle, onTapped: onTapped)
                 dispatched = true
             } else {
                 dispatched = false
             }
         } else if let overlay = overlays.filter({ $0.isAvailable }).randomElement() {
-            overlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: config.restingSeconds, onTapped: onTapped)
+            overlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: restingSeconds, actionTitle: actionTitle, onTapped: onTapped)
             dispatched = true
         } else {
             dispatched = false

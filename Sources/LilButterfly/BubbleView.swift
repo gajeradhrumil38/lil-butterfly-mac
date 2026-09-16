@@ -30,7 +30,19 @@ final class BubbleView: NSView {
         return CGRect(x: frame.width - margin - size, y: frame.height - margin - size, width: size, height: size)
     }
 
-    init(message: String) {
+    /// Reserved space at the bottom of the card, inside the same rounded
+    /// rectangle as the message — not a separate floating pill below it —
+    /// for actionable messages (currently just the update reminder). Only
+    /// meaningful when the bubble was built with a non-nil actionTitle.
+    static let actionButtonSize = CGSize(width: 116, height: 26)
+    private static let actionAreaHeight: CGFloat = actionButtonSize.height + 18 // button + gap above it
+
+    var actionButtonFrame: CGRect {
+        let size = Self.actionButtonSize
+        return CGRect(x: (frame.width - size.width) / 2, y: 10, width: size.width, height: size.height)
+    }
+
+    init(message: String, actionTitle: String? = nil) {
         super.init(frame: .zero)
         wantsLayer = true
         effectView.material = .hudWindow
@@ -107,12 +119,13 @@ final class BubbleView: NSView {
         layoutManager.ensureLayout(for: textContainer)
         let usedRect = layoutManager.usedRect(for: textContainer)
         let textHeight = ceil(max(usedRect.height, font.ascender - font.descender + font.leading))
-        let height = textHeight + 20
+        let actionAreaHeight: CGFloat = actionTitle != nil ? Self.actionAreaHeight : 0
+        let height = textHeight + 20 + actionAreaHeight
         frame = CGRect(x: 0, y: 0, width: width, height: height)
         effectView.frame = CGRect(x: 0, y: 0, width: width, height: height)
         effectView.layer?.cornerRadius = min(Self.cornerRadius, height / 2)
         effectView.layer?.sublayers?.first(where: { $0 is CAGradientLayer })?.frame = effectView.bounds
-        label.frame = CGRect(x: 14, y: 10, width: textWidth, height: textHeight)
+        label.frame = CGRect(x: 14, y: 10 + actionAreaHeight, width: textWidth, height: textHeight)
         layoutTail()
 
         setUpDots(in: label.frame)

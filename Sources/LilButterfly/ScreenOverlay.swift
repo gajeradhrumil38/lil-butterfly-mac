@@ -39,7 +39,7 @@ final class ScreenOverlay {
     private let screenFrame: CGRect
     private var isBusy = false
     private var closeWindow: BubbleCloseWindow?
-    private var tapWindow: BubbleTapWindow?
+    private var actionButtonWindow: UpdateActionButtonWindow?
 
     init(screen: NSScreen) {
         self.window = OverlayWindow(screen: screen)
@@ -52,8 +52,8 @@ final class ScreenOverlay {
         isBusy = false
         closeWindow?.orderOut(nil)
         closeWindow = nil
-        tapWindow?.orderOut(nil)
-        tapWindow = nil
+        actionButtonWindow?.orderOut(nil)
+        actionButtonWindow = nil
         window.contentView?.subviews.forEach {
             $0.layer?.removeAllAnimations()
             $0.removeFromSuperview()
@@ -66,6 +66,7 @@ final class ScreenOverlay {
         pinnedAssetIndex: Int? = nil,
         displayWidth: CGFloat = ButterflySize.widths[ButterflySize.defaultIndex],
         restingSeconds: Double = 5.0,
+        actionTitle: String? = nil,
         onTapped: (() -> Void)? = nil
     ) {
         guard !isBusy, let host = window.contentView else { return }
@@ -79,7 +80,7 @@ final class ScreenOverlay {
         let butterfly = ButterflyView(center: off, pinnedAssetIndex: pinnedAssetIndex, displayWidth: displayWidth)
         host.addSubview(butterfly)
 
-        let bubble = BubbleView(message: message)
+        let bubble = BubbleView(message: message, actionTitle: actionTitle)
         host.addSubview(bubble)
 
         func bubbleLocalRectOnScreen(_ local: CGRect) -> CGRect {
@@ -91,7 +92,10 @@ final class ScreenOverlay {
             return CGRect(origin: targetOnScreen, size: local.size)
         }
         func closeTargetFrameOnScreen() -> CGRect { bubbleLocalRectOnScreen(bubble.closeTargetFrame) }
-        func fullBubbleFrameOnScreen() -> CGRect { bubbleLocalRectOnScreen(CGRect(origin: .zero, size: bubble.frame.size)) }
+        // Inside the same rounded-rect card, reserved by BubbleView's own
+        // layout when it's built with an actionTitle — not a separate
+        // floating pill below it.
+        func actionButtonFrameOnScreen() -> CGRect { bubbleLocalRectOnScreen(bubble.actionButtonFrame) }
 
         func positionBubble(near point: CGPoint) {
             let onRightHalf = point.x > screenFrame.width / 2
@@ -105,8 +109,8 @@ final class ScreenOverlay {
             if let closeWindow = self.closeWindow {
                 closeWindow.setFrame(closeTargetFrameOnScreen(), display: true)
             }
-            if let tapWindow = self.tapWindow {
-                tapWindow.setFrame(fullBubbleFrameOnScreen(), display: true)
+            if let actionButtonWindow = self.actionButtonWindow {
+                actionButtonWindow.setFrame(actionButtonFrameOnScreen(), display: true)
             }
         }
         positionBubble(near: off)
@@ -123,8 +127,8 @@ final class ScreenOverlay {
             bubble.fadeOut {
                 self.closeWindow?.orderOut(nil)
                 self.closeWindow = nil
-                self.tapWindow?.orderOut(nil)
-                self.tapWindow = nil
+                self.actionButtonWindow?.orderOut(nil)
+                self.actionButtonWindow = nil
                 bubble.removeFromSuperview()
                 butterfly.flyPath(from: butterfly.centerPosition, to: off, duration: 1.2, easeIn: true) {
                     butterfly.removeFromSuperview()
@@ -147,16 +151,20 @@ final class ScreenOverlay {
             // just past the edge extends back onto the visible screen even
             // though the butterfly itself hasn't arrived), so the close mark
             // showed up alone during the fly-in, well before the message did.
-            // The full-bubble tap window (only present for actionable
-            // messages, like an update reminder) is created first so the
-            // close window, added right after, wins in their small
-            // overlapping corner — tapping anywhere else on the card
-            // triggers onTapped instead of just dismissing.
+            // A real, visible button (only present for actionable messages,
+            // like an update reminder) drawn inside the card's own reserved
+            // bottom area — the same "one small window draws and handles
+            // its own click" approach the close mark already uses, just
+            // with a proper labeled control instead of an icon.
             if let onTapped {
-                self.tapWindow = BubbleTapWindow(frame: fullBubbleFrameOnScreen()) {
-                    leaveNow()
-                    onTapped()
-                }
+                self.actionButtonWindow = UpdateActionButtonWindow(
+                    frame: actionButtonFrameOnScreen(),
+                    title: actionTitle ?? "Update",
+                    onClick: {
+                        leaveNow()
+                        onTapped()
+                    }
+                )
             }
             self.closeWindow = BubbleCloseWindow(frame: closeTargetFrameOnScreen()) {
                 leaveNow()
