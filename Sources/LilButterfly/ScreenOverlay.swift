@@ -67,7 +67,8 @@ final class ScreenOverlay {
         displayWidth: CGFloat = ButterflySize.widths[ButterflySize.defaultIndex],
         restingSeconds: Double = 5.0,
         actionTitle: String? = nil,
-        onTapped: (() -> Void)? = nil
+        onTapped: (() -> Void)? = nil,
+        checkIn: CheckInContent? = nil
     ) {
         guard !isBusy, let host = window.contentView else { return }
         isBusy = true
@@ -80,7 +81,14 @@ final class ScreenOverlay {
         let butterfly = ButterflyView(center: off, pinnedAssetIndex: pinnedAssetIndex, displayWidth: displayWidth)
         host.addSubview(butterfly)
 
-        let choiceLabels: [String] = actionTitle.map { [$0] } ?? []
+        let choiceLabels: [String]
+        if let actionTitle {
+            choiceLabels = [actionTitle]
+        } else if let checkIn {
+            choiceLabels = checkIn.choices.map { $0.label }
+        } else {
+            choiceLabels = []
+        }
         let bubble = BubbleView(message: message, choiceLabels: choiceLabels)
         host.addSubview(bubble)
 
@@ -157,7 +165,21 @@ final class ScreenOverlay {
             // bottom area — the same "one small window draws and handles
             // its own click" approach the close mark already uses, just
             // with a proper labeled control instead of an icon.
-            if let onTapped {
+            if let checkIn {
+                // A pick reveals its reply in place and holds a bit longer
+                // before leaving, rather than leaving immediately like the
+                // update button does — the reply is the whole point of a
+                // check-in, so it needs time to actually be read.
+                self.choiceWindows = checkIn.choices.enumerated().map { index, choice in
+                    ChoiceButtonWindow(frame: choiceFrameOnScreen(index), title: choice.label, style: .plainChip) {
+                        CheckInStore.record(style: checkIn.style.rawValue, choice: choice.label)
+                        bubble.revealReply(choice.replies.randomElement() ?? choice.replies[0])
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                            leaveNow()
+                        }
+                    }
+                }
+            } else if let onTapped {
                 let window = ChoiceButtonWindow(
                     frame: choiceFrameOnScreen(0),
                     title: actionTitle ?? "Update",
