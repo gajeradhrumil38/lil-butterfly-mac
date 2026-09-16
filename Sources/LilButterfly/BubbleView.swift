@@ -211,6 +211,17 @@ final class BubbleView: NSView {
     /// pool in this app, since this does not re-run the height calculation
     /// from init — a much longer reply would overflow the reserved box.
     func revealReply(_ text: String) {
+        // A choice can be tapped before the typing-dots-to-text reveal
+        // (scheduled 0.9s after fadeIn) has run yet. dotsContainer sits on
+        // top of the label in z-order, so without this, the reply text
+        // gets set correctly underneath but stays hidden behind the still-
+        // pulsing dots until that unrelated timer catches up — reading as
+        // if the click did nothing (or the message "vanished") for up to
+        // 0.9s. Marking didRevealText here makes that scheduled reveal a
+        // no-op, and removing dotsContainer immediately guarantees the
+        // reply is visible the moment this fade-in completes.
+        didRevealText = true
+        dotsContainer.removeFromSuperview()
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.2
             label.animator().alphaValue = 0

@@ -106,7 +106,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             actionTitle = "Update Now"
             onTapped = { [weak self] in self?.startSelfUpdate(release: pendingUpdate) }
             restingSeconds = max(config.restingSeconds, 14)
-        } else if Double.random(in: 0..<1) < (1.0 / 12.0) {
+        } else if true {
             // Rare, occasional — folded into a visit that was going to
             // happen anyway (scheduled or manual), same as the update
             // reminder, never a separate interruption. The update reminder
