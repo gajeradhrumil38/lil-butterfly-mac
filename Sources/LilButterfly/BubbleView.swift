@@ -30,19 +30,31 @@ final class BubbleView: NSView {
         return CGRect(x: frame.width - margin - size, y: frame.height - margin - size, width: size, height: size)
     }
 
-    /// Reserved space at the bottom of the card, inside the same rounded
-    /// rectangle as the message — not a separate floating pill below it —
-    /// for actionable messages (currently just the update reminder). Only
-    /// meaningful when the bubble was built with a non-nil actionTitle.
-    static let actionButtonSize = CGSize(width: 116, height: 26)
-    private static let actionAreaHeight: CGFloat = actionButtonSize.height + 18 // button + gap above it
+    private static let choiceRowHeight: CGFloat = 32
+    private static let choiceAreaHeight: CGFloat = choiceRowHeight + 18 // row + gap above it
+    private var choiceCount = 0
 
-    var actionButtonFrame: CGRect {
-        let size = Self.actionButtonSize
-        return CGRect(x: (frame.width - size.width) / 2, y: 10, width: size.width, height: size.height)
+    /// The rect for one choice slot in the reserved bottom row, inside the
+    /// same rounded rectangle as the message — not a separate floating pill
+    /// below it. The same closeTargetFrame pattern, generalized from one
+    /// button (the update reminder) to N (every check-in style). A single
+    /// choice keeps the update button's existing fixed 116pt-wide centered
+    /// look; more than one spreads evenly across the card's content width.
+    func choiceFrame(at index: Int) -> CGRect {
+        guard choiceCount > 0 else { return .zero }
+        if choiceCount == 1 {
+            let size = CGSize(width: 116, height: Self.choiceRowHeight)
+            return CGRect(x: (frame.width - size.width) / 2, y: 10, width: size.width, height: size.height)
+        }
+        let horizontalPadding: CGFloat = 14
+        let spacing: CGFloat = 6
+        let contentWidth = frame.width - horizontalPadding * 2
+        let slotWidth = (contentWidth - spacing * CGFloat(choiceCount - 1)) / CGFloat(choiceCount)
+        let x = horizontalPadding + CGFloat(index) * (slotWidth + spacing)
+        return CGRect(x: x, y: 10, width: slotWidth, height: Self.choiceRowHeight)
     }
 
-    init(message: String, actionTitle: String? = nil) {
+    init(message: String, choiceLabels: [String] = []) {
         super.init(frame: .zero)
         wantsLayer = true
         effectView.material = .hudWindow
@@ -119,13 +131,14 @@ final class BubbleView: NSView {
         layoutManager.ensureLayout(for: textContainer)
         let usedRect = layoutManager.usedRect(for: textContainer)
         let textHeight = ceil(max(usedRect.height, font.ascender - font.descender + font.leading))
-        let actionAreaHeight: CGFloat = actionTitle != nil ? Self.actionAreaHeight : 0
-        let height = textHeight + 20 + actionAreaHeight
+        choiceCount = choiceLabels.count
+        let choiceAreaHeight: CGFloat = choiceLabels.isEmpty ? 0 : Self.choiceAreaHeight
+        let height = textHeight + 20 + choiceAreaHeight
         frame = CGRect(x: 0, y: 0, width: width, height: height)
         effectView.frame = CGRect(x: 0, y: 0, width: width, height: height)
         effectView.layer?.cornerRadius = min(Self.cornerRadius, height / 2)
         effectView.layer?.sublayers?.first(where: { $0 is CAGradientLayer })?.frame = effectView.bounds
-        label.frame = CGRect(x: 14, y: 10 + actionAreaHeight, width: textWidth, height: textHeight)
+        label.frame = CGRect(x: 14, y: 10 + choiceAreaHeight, width: textWidth, height: textHeight)
         layoutTail()
 
         setUpDots(in: label.frame)
@@ -231,5 +244,29 @@ final class BubbleView: NSView {
             ctx.duration = 0.4
             animator().alphaValue = 0
         }, completionHandler: completion)
+    }
+
+    /// Cross-fades the label to a new string — used when a check-in choice
+    /// is tapped, swapping the question for a reply in place without
+    /// resizing the card. Reply pools are written to stay roughly as short
+    /// as the questions they follow, same convention as every other message
+    /// pool in this app, since this does not re-run the height calculation
+    /// from init — a much longer reply would overflow the reserved box.
+    func revealReply(_ text: String) {
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = 0.2
+            label.animator().alphaValue = 0
+        }, completionHandler: { [weak self] in
+            guard let self else { return }
+            let font = NSFont.systemFont(ofSize: 13)
+            self.label.textStorage?.setAttributedString(NSAttributedString(
+                string: text,
+                attributes: [.font: font, .foregroundColor: NSColor.white]
+            ))
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.2
+                self.label.animator().alphaValue = 1
+            }
+        })
     }
 }
