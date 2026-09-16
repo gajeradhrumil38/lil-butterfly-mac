@@ -24,7 +24,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let menu = NSMenu(); menu.delegate = self; statusItem.menu = menu
         rebuildMenu(menu); scheduleNext(); updateMeetingReminderTimer()
         checkForUpdates(showResult: false)
-        if !config.hasStarted, fireVisit() {
+        // manualOverride: true so this first-impression moment is guaranteed
+        // rather than possibly getting silently skipped by quiet-hours
+        // gentle-mode gating (fireVisit's normal path can legitimately
+        // return false and stay silent — fine for a routine scheduled
+        // visit, not fine for the one message every new user is meant to
+        // actually see).
+        if !config.hasStarted, fireVisit(manualOverride: true, overrideMessage: Self.welcomeMessage) {
             config.hasStarted = true
             ConfigStore.save(config)
         }
@@ -60,8 +66,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         scheduleTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in self?.fireVisit(); self?.scheduleNext() }
     }
 
+    /// Shown once, in place of the usual random pool, on the very first
+    /// visit after a fresh install — a proper introduction rather than
+    /// whatever the dice happened to land on.
+    private static let welcomeMessage = "Hi, I'm here to gently remind you to pause sometimes. Made with a lot of care, just for you 💛"
+
     @discardableResult
-    private func fireVisit(manualOverride: Bool = false) -> Bool {
+    private func fireVisit(manualOverride: Bool = false, overrideMessage: String? = nil) -> Bool {
         guard manualOverride || !config.paused else { return false }
         guard manualOverride || !config.suppressDuringMeetings ||
                 (!MeetingDetector.isMeetingAppActive && !meetingCalendar.isVideoMeetingActive()) else { return false }
@@ -69,7 +80,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // returns nil most of the time during that window instead (see its
         // doc comment), so a scheduled cycle can land here and legitimately
         // decide to stay silent.
-        guard let message = config.randomMessage(manualOverride: manualOverride) else { return false }
+        guard let message = overrideMessage ?? config.randomMessage(manualOverride: manualOverride) else { return false }
         let displayWidth = ButterflySize.width(forIndex: config.butterflySizeIndex)
         if config.mode == "docked" {
             guard let dockedOverlay else { return false }
