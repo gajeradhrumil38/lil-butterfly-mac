@@ -13,7 +13,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var meetingReminderTimer: Timer?
     private var remindedMeetingID: String?
     private var latestRelease: GitHubRelease?
+    private var isUpdating = false
     private lazy var updateChecker = UpdateChecker(currentVersion: installedVersion)
+    private lazy var selfUpdater = SelfUpdater()
     private lazy var regularStatusIcon = makeStatusIcon(updateAvailable: false)
     private lazy var updateStatusIcon = makeStatusIcon(updateAvailable: true)
 
@@ -113,7 +115,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         countdownItem.isEnabled = false
         menu.addItem(countdownItem)
 
-        if let latestRelease {
+        if isUpdating {
+            let updatingItem = NSMenuItem(title: "Updating…", action: nil, keyEquivalent: "")
+            updatingItem.image = symbolImage("arrow.down.circle.fill")
+            updatingItem.isEnabled = false
+            menu.addItem(updatingItem)
+        } else if let latestRelease {
             addItem(to: menu, title: "Update · v\(latestRelease.version)", action: #selector(updateTapped), symbol: "arrow.down.circle.fill")
         } else {
             addItem(to: menu, title: "Check for Updates…", action: #selector(checkForUpdatesTapped), symbol: "arrow.triangle.2.circlepath")
@@ -330,7 +337,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func checkForUpdatesTapped() { checkForUpdates(showResult: true) }
     @objc private func updateTapped() {
         guard let latestRelease else { return }
-        NSWorkspace.shared.open(latestRelease.htmlURL)
+        startSelfUpdate(release: latestRelease)
+    }
+
+    /// Downloads, installs, and relaunches in place — a single click
+    /// instead of sending the user to the GitHub release page to copy and
+    /// run a terminal command themselves. Falls back to that page only if
+    /// the release has no matching download asset to fetch.
+    private func startSelfUpdate(release: GitHubRelease) {
+        guard !isUpdating else { return }
+        guard let downloadURL = release.appDownloadURL else {
+            NSWorkspace.shared.open(release.htmlURL)
+            return
+        }
+        isUpdating = true
+        if let menu = statusItem?.menu { rebuildMenu(menu) }
+        selfUpdater.update(downloadURL: downloadURL) { [weak self] error in
+            guard let self, let error else { return }
+            // Only reached on failure — success replaces this process
+            // entirely (SelfUpdater terminates the app once the new one is
+            // already launched).
+            self.isUpdating = false
+            if let menu = self.statusItem?.menu { self.rebuildMenu(menu) }
+            self.showUpdateMessage("Could not install the update automatically.\n\(error.localizedDescription)\n\nYou can also open the download page instead.")
+        }
     }
 
     private var installedVersion: String {
@@ -392,11 +422,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                         if let release {
                             let alert = NSAlert()
                             alert.messageText = "A new Butterfly is ready"
-                            alert.informativeText = "Version \(release.version) is available. Open the download page to install it."
-                            alert.addButton(withTitle: "Open Download Page")
+                            alert.informativeText = "Version \(release.version) is available."
+                            alert.addButton(withTitle: "Update Now")
                             alert.addButton(withTitle: "Later")
                             if alert.runModal() == .alertFirstButtonReturn {
-                                NSWorkspace.shared.open(release.htmlURL)
+                                self.startSelfUpdate(release: release)
                             }
                         } else {
                             self.showUpdateMessage("Butterfly is up to date.")

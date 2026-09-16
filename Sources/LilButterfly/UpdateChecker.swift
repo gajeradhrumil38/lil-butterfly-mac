@@ -1,18 +1,36 @@
 import Foundation
 
 struct GitHubRelease: Decodable {
+    struct Asset: Decodable {
+        let name: String
+        let downloadURL: URL
+
+        private enum CodingKeys: String, CodingKey {
+            case name
+            case downloadURL = "browser_download_url"
+        }
+    }
+
     let tagName: String
     let htmlURL: URL
     let name: String?
+    let assets: [Asset]
 
     var version: String {
         tagName.trimmingCharacters(in: CharacterSet(charactersIn: "vV"))
+    }
+
+    /// The one-click updater's download target — the same
+    /// Butterfly-*.zip asset scripts/install.sh looks for.
+    var appDownloadURL: URL? {
+        assets.first { $0.name.hasPrefix("Butterfly-") && $0.name.hasSuffix(".zip") }?.downloadURL
     }
 
     private enum CodingKeys: String, CodingKey {
         case tagName = "tag_name"
         case htmlURL = "html_url"
         case name
+        case assets
     }
 }
 
