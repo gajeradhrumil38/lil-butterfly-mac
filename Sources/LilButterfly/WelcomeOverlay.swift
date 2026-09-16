@@ -28,12 +28,23 @@ final class WelcomeOverlay {
 
         let center = CGPoint(x: screenFrame.midX, y: screenFrame.midY)
         let assetCount = max(1, WingAssets.names().count)
-        let ringCount = 8
-        let radius: CGFloat = 150
 
-        for i in 0..<ringCount {
-            let angle = (CGFloat(i) / CGFloat(ringCount)) * 2 * .pi
-            let target = CGPoint(x: center.x + cos(angle) * radius, y: center.y + sin(angle) * radius)
+        // Built from the bubble's own (not-yet-displayed) size, so the
+        // formation traces its actual rectangle rather than an arbitrary
+        // circle — a frame that matches the message's own shape instead of
+        // one that happens to surround it.
+        let bubble = BubbleView(message: message)
+        let margin: CGFloat = 34 // gap between the bubble's edge and the frame
+        let borderRect = CGRect(
+            x: center.x - bubble.frame.width / 2 - margin,
+            y: center.y - bubble.frame.height / 2 - margin,
+            width: bubble.frame.width + margin * 2,
+            height: bubble.frame.height + margin * 2
+        )
+        let spacing: CGFloat = 34 // close enough to read as a continuous border
+        let targets = perimeterPoints(of: borderRect, spacing: spacing)
+
+        for (i, target) in targets.enumerated() {
             let edge = ScreenEdge.allCases.randomElement()!
             let edgePoint = edge.restPoint(in: screenFrame, margin: 0)
             let start = edge.offscreenPoint(in: screenFrame, restX: edgePoint.x, restY: edgePoint.y, margin: 0)
@@ -43,7 +54,7 @@ final class WelcomeOverlay {
             host.addSubview(butterfly)
             ringButterflies.append(butterfly)
 
-            let delay = Double(i) * 0.07
+            let delay = Double(i) * 0.05
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                 guard self.isBusy else { return }
                 NSAnimationContext.runAnimationGroup { context in
@@ -57,12 +68,11 @@ final class WelcomeOverlay {
             }
         }
 
-        // The message arrives a beat after the ring starts forming, so it
+        // The message arrives a beat after the border starts forming, so it
         // reads as "the butterflies bringing the message" rather than
         // everything popping in at the same instant.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             guard self.isBusy else { return }
-            let bubble = BubbleView(message: message)
             bubble.setFrameOrigin(CGPoint(x: center.x - bubble.frame.width / 2, y: center.y - bubble.frame.height / 2))
             host.addSubview(bubble)
             self.bubble = bubble
@@ -72,12 +82,33 @@ final class WelcomeOverlay {
                 self.dismiss()
             }
 
-            let holdSeconds = 6.0
+            let holdSeconds = 9.0
             DispatchQueue.main.asyncAfter(deadline: .now() + holdSeconds) {
                 guard self.isBusy else { return }
                 self.dismiss()
             }
         }
+    }
+
+    /// Evenly spaced points walking the perimeter of `rect`, roughly
+    /// `spacing` apart, starting at the top-left corner and going clockwise.
+    private func perimeterPoints(of rect: CGRect, spacing: CGFloat) -> [CGPoint] {
+        let perimeter = 2 * (rect.width + rect.height)
+        let count = max(8, Int((perimeter / spacing).rounded()))
+        return (0..<count).map { i in
+            pointOnPerimeter(of: rect, distance: (CGFloat(i) / CGFloat(count)) * perimeter)
+        }
+    }
+
+    private func pointOnPerimeter(of rect: CGRect, distance: CGFloat) -> CGPoint {
+        var d = distance
+        if d <= rect.width { return CGPoint(x: rect.minX + d, y: rect.maxY) } // top, left→right
+        d -= rect.width
+        if d <= rect.height { return CGPoint(x: rect.maxX, y: rect.maxY - d) } // right, top→bottom
+        d -= rect.height
+        if d <= rect.width { return CGPoint(x: rect.maxX - d, y: rect.minY) } // bottom, right→left
+        d -= rect.width
+        return CGPoint(x: rect.minX, y: rect.minY + d) // left, bottom→top
     }
 
     private func closeTargetFrameOnScreen(for bubble: BubbleView) -> CGRect {
