@@ -113,7 +113,6 @@ final class ScreenOverlay {
                 : point.x + butterfly.frame.width / 2 + 10
             let y = min(screenFrame.height - bubble.frame.height - 8, point.y - bubble.frame.height / 2 + 10)
             bubble.setFrameOrigin(CGPoint(x: x, y: max(8, y)))
-            bubble.pointTailTowardButterfly(onRight: onRightHalf)
 
             if let closeWindow = self.closeWindow {
                 closeWindow.setFrame(closeTargetFrameOnScreen(), display: true)
