@@ -11,9 +11,14 @@ swift build -c release
 
 APP="Butterfly.app"
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/Butterfly "$APP/Contents/MacOS/Butterfly"
-cp -R .build/release/Butterfly_Butterfly.bundle "$APP/Contents/Butterfly_Butterfly.bundle"
+# Bundle.module's generated accessor looks in Bundle.main.resourceURL first,
+# which for a real .app is Contents/Resources — not Contents/ directly. This
+# was the actual cause of "could not load resource bundle" crashing every
+# release build on first launch (never caught by `swift run`, which doesn't
+# use this script or a real .app bundle at all).
+cp -R .build/release/Butterfly_Butterfly.bundle "$APP/Contents/Resources/Butterfly_Butterfly.bundle"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
