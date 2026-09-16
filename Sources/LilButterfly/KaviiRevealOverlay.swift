@@ -121,15 +121,41 @@ final class KaviiRevealOverlay {
         let holdSeconds = 4.6
         DispatchQueue.main.asyncAfter(deadline: .now() + holdSeconds) {
             guard self.isBusy else { return }
-            self.butterflies.forEach { $0.stopHover() }
-            NSAnimationContext.runAnimationGroup({ context in
-                context.duration = 0.6
-                self.butterflies.forEach { $0.animator().alphaValue = 0 }
-            }, completionHandler: {
-                self.butterflies.forEach { $0.removeFromSuperview() }
-                self.butterflies.removeAll()
-                self.isBusy = false
-            })
+            self.departWordmark()
+        }
+    }
+
+    /// The reverse of assembling: rather than fading the whole word out in
+    /// place, every butterfly peels off and flies back out past a random
+    /// screen edge, the same way the borderScatter entrance style brings
+    /// them in — just outbound instead of inbound, and staggered per
+    /// butterfly instead of all at once, so the word visibly scatters apart
+    /// rather than vanishing.
+    private func departWordmark() {
+        let departing = butterflies
+        butterflies.removeAll()
+        guard !departing.isEmpty else {
+            isBusy = false
+            return
+        }
+
+        var remaining = departing.count
+        for (index, butterfly) in departing.enumerated() {
+            butterfly.stopHover()
+            let edge = ScreenEdge.allCases.randomElement()!
+            let edgePoint = edge.restPoint(in: screenFrame, margin: 0)
+            let off = edge.offscreenPoint(in: screenFrame, restX: edgePoint.x, restY: edgePoint.y, margin: 0)
+            let delay = Double(index) * 0.02 + Double.random(in: 0...0.2)
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                butterfly.flyPath(from: butterfly.centerPosition, to: off, duration: 0.9, easeIn: true) {
+                    butterfly.removeFromSuperview()
+                    remaining -= 1
+                    if remaining == 0 {
+                        self.isBusy = false
+                    }
+                }
+            }
         }
     }
 
