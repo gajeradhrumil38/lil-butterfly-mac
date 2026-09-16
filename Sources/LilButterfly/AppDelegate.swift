@@ -96,6 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let message: String
         var onTapped: (() -> Void)?
         var actionTitle: String?
+        var checkIn: CheckInContent?
         // A button needs real time to notice and aim for, not the few
         // seconds a one-line message normally gets — longer than whatever
         // the user configured, specifically for this message.
@@ -104,6 +105,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             message = "A new Butterfly (v\(pendingUpdate.version)) is ready."
             actionTitle = "Update Now"
             onTapped = { [weak self] in self?.startSelfUpdate(release: pendingUpdate) }
+            restingSeconds = max(config.restingSeconds, 14)
+        } else if Double.random(in: 0..<1) < (1.0 / 12.0) {
+            // Rare, occasional — folded into a visit that was going to
+            // happen anyway (scheduled or manual), same as the update
+            // reminder, never a separate interruption. The update reminder
+            // above always wins when both are pending — it's guaranteed-
+            // once-per-version and functional; a check-in is discretionary
+            // and can simply wait for the next eligible visit.
+            let content = CheckInContent.random()
+            checkIn = content
+            message = content.question
             restingSeconds = max(config.restingSeconds, 14)
         } else {
             // Quiet hours are gentle mode, not a hard stop: randomMessage
@@ -118,13 +130,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let dispatched: Bool
         if config.mode == "docked" {
             if let dockedOverlay {
-                dockedOverlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: restingSeconds, actionTitle: actionTitle, onTapped: onTapped)
+                dockedOverlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: restingSeconds, actionTitle: actionTitle, onTapped: onTapped, checkIn: checkIn)
                 dispatched = true
             } else {
                 dispatched = false
             }
         } else if let overlay = overlays.filter({ $0.isAvailable }).randomElement() {
-            overlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: restingSeconds, actionTitle: actionTitle, onTapped: onTapped)
+            overlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: restingSeconds, actionTitle: actionTitle, onTapped: onTapped, checkIn: checkIn)
             dispatched = true
         } else {
             dispatched = false
