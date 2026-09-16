@@ -10,6 +10,7 @@ final class DockedOverlay {
     private var isBusy = false
     private var butterfly: ButterflyView?
     private var closeWindow: BubbleCloseWindow?
+    private var tapWindow: BubbleCloseWindow?
     private var handleWindow: DockedButterflyHandleWindow?
     private var edge: ScreenEdge
     private var positionFraction: Double?
@@ -165,6 +166,8 @@ final class DockedOverlay {
         isBusy = false
         closeWindow?.orderOut(nil)
         closeWindow = nil
+        tapWindow?.orderOut(nil)
+        tapWindow = nil
         window.contentView?.subviews.forEach { $0.removeFromSuperview() }
         butterfly?.layer?.removeAllAnimations()
         butterfly = nil
@@ -172,7 +175,7 @@ final class DockedOverlay {
         handleWindow = nil
     }
 
-    func visit(message: String, pinnedAssetIndex: Int?, displayWidth: CGFloat, restingSeconds: Double) {
+    func visit(message: String, pinnedAssetIndex: Int?, displayWidth: CGFloat, restingSeconds: Double, onTapped: (() -> Void)? = nil) {
         guard !isBusy, let host = window.contentView,
               let butterfly = ensureParked(pinnedAssetIndex: pinnedAssetIndex, displayWidth: displayWidth) else { return }
         isBusy = true
@@ -181,15 +184,16 @@ final class DockedOverlay {
         let bubble = BubbleView(message: message)
         host.addSubview(bubble)
 
-        func closeTargetFrameOnScreen() -> CGRect {
-            let target = bubble.closeTargetFrame
+        func bubbleLocalRectOnScreen(_ local: CGRect) -> CGRect {
             let targetInWindow = host.convert(
-                CGPoint(x: bubble.frame.minX + target.minX, y: bubble.frame.minY + target.minY),
+                CGPoint(x: bubble.frame.minX + local.minX, y: bubble.frame.minY + local.minY),
                 to: nil
             )
             let targetOnScreen = window.convertPoint(toScreen: targetInWindow)
-            return CGRect(origin: targetOnScreen, size: target.size)
+            return CGRect(origin: targetOnScreen, size: local.size)
         }
+        func closeTargetFrameOnScreen() -> CGRect { bubbleLocalRectOnScreen(bubble.closeTargetFrame) }
+        func fullBubbleFrameOnScreen() -> CGRect { bubbleLocalRectOnScreen(CGRect(origin: .zero, size: bubble.frame.size)) }
 
         func positionBubble(near point: CGPoint) {
             let onRight = point.x > screenFrame.width / 2
@@ -202,6 +206,9 @@ final class DockedOverlay {
 
             if let closeWindow = self.closeWindow {
                 closeWindow.setFrame(closeTargetFrameOnScreen(), display: true)
+            }
+            if let tapWindow = self.tapWindow {
+                tapWindow.setFrame(fullBubbleFrameOnScreen(), display: true)
             }
             self.updateHandleWindowFrame()
         }
@@ -225,6 +232,12 @@ final class DockedOverlay {
             butterfly.alphaValue = 1
             butterfly.startHover()
             bubble.fadeIn()
+            if let onTapped {
+                tapWindow = BubbleCloseWindow(frame: fullBubbleFrameOnScreen()) {
+                    leaveNow()
+                    onTapped()
+                }
+            }
             closeWindow = BubbleCloseWindow(frame: closeTargetFrameOnScreen()) {
                 leaveNow()
             }
@@ -236,6 +249,8 @@ final class DockedOverlay {
                 bubble.fadeOut {
                     self.closeWindow?.orderOut(nil)
                     self.closeWindow = nil
+                    self.tapWindow?.orderOut(nil)
+                    self.tapWindow = nil
                     guard self.visitID == currentVisitID else { return }
                     bubble.removeFromSuperview()
                     self.isBusy = false
@@ -254,6 +269,12 @@ final class DockedOverlay {
                 butterfly.alphaValue = 1
                 butterfly.startHover()
                 bubble.fadeIn()
+                if let onTapped {
+                    self.tapWindow = BubbleCloseWindow(frame: fullBubbleFrameOnScreen()) {
+                        leaveNow()
+                        onTapped()
+                    }
+                }
                 self.closeWindow = BubbleCloseWindow(frame: closeTargetFrameOnScreen()) {
                     leaveNow()
                 }
@@ -265,6 +286,8 @@ final class DockedOverlay {
                     bubble.fadeOut {
                         self.closeWindow?.orderOut(nil)
                         self.closeWindow = nil
+                        self.tapWindow?.orderOut(nil)
+                        self.tapWindow = nil
                         guard self.visitID == currentVisitID else { return }
                         bubble.removeFromSuperview()
                         butterfly.flyPath(from: butterfly.centerPosition, to: self.dockPoint(margin: 40), duration: 1.2, easeIn: true) {

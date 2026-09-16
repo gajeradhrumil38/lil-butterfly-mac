@@ -39,6 +39,7 @@ final class ScreenOverlay {
     private let screenFrame: CGRect
     private var isBusy = false
     private var closeWindow: BubbleCloseWindow?
+    private var tapWindow: BubbleCloseWindow?
 
     init(screen: NSScreen) {
         self.window = OverlayWindow(screen: screen)
@@ -51,6 +52,8 @@ final class ScreenOverlay {
         isBusy = false
         closeWindow?.orderOut(nil)
         closeWindow = nil
+        tapWindow?.orderOut(nil)
+        tapWindow = nil
         window.contentView?.subviews.forEach {
             $0.layer?.removeAllAnimations()
             $0.removeFromSuperview()
@@ -62,7 +65,8 @@ final class ScreenOverlay {
         message: String,
         pinnedAssetIndex: Int? = nil,
         displayWidth: CGFloat = ButterflySize.widths[ButterflySize.defaultIndex],
-        restingSeconds: Double = 5.0
+        restingSeconds: Double = 5.0,
+        onTapped: (() -> Void)? = nil
     ) {
         guard !isBusy, let host = window.contentView else { return }
         isBusy = true
@@ -78,15 +82,16 @@ final class ScreenOverlay {
         let bubble = BubbleView(message: message)
         host.addSubview(bubble)
 
-        func closeTargetFrameOnScreen() -> CGRect {
-            let target = bubble.closeTargetFrame
+        func bubbleLocalRectOnScreen(_ local: CGRect) -> CGRect {
             let targetInWindow = host.convert(
-                CGPoint(x: bubble.frame.minX + target.minX, y: bubble.frame.minY + target.minY),
+                CGPoint(x: bubble.frame.minX + local.minX, y: bubble.frame.minY + local.minY),
                 to: nil
             )
             let targetOnScreen = window.convertPoint(toScreen: targetInWindow)
-            return CGRect(origin: targetOnScreen, size: target.size)
+            return CGRect(origin: targetOnScreen, size: local.size)
         }
+        func closeTargetFrameOnScreen() -> CGRect { bubbleLocalRectOnScreen(bubble.closeTargetFrame) }
+        func fullBubbleFrameOnScreen() -> CGRect { bubbleLocalRectOnScreen(CGRect(origin: .zero, size: bubble.frame.size)) }
 
         func positionBubble(near point: CGPoint) {
             let onRightHalf = point.x > screenFrame.width / 2
@@ -99,6 +104,9 @@ final class ScreenOverlay {
 
             if let closeWindow = self.closeWindow {
                 closeWindow.setFrame(closeTargetFrameOnScreen(), display: true)
+            }
+            if let tapWindow = self.tapWindow {
+                tapWindow.setFrame(fullBubbleFrameOnScreen(), display: true)
             }
         }
         positionBubble(near: off)
@@ -115,6 +123,8 @@ final class ScreenOverlay {
             bubble.fadeOut {
                 self.closeWindow?.orderOut(nil)
                 self.closeWindow = nil
+                self.tapWindow?.orderOut(nil)
+                self.tapWindow = nil
                 bubble.removeFromSuperview()
                 butterfly.flyPath(from: butterfly.centerPosition, to: off, duration: 1.2, easeIn: true) {
                     butterfly.removeFromSuperview()
@@ -137,6 +147,17 @@ final class ScreenOverlay {
             // just past the edge extends back onto the visible screen even
             // though the butterfly itself hasn't arrived), so the close mark
             // showed up alone during the fly-in, well before the message did.
+            // The full-bubble tap window (only present for actionable
+            // messages, like an update reminder) is created first so the
+            // close window, added right after, wins in their small
+            // overlapping corner — tapping anywhere else on the card
+            // triggers onTapped instead of just dismissing.
+            if let onTapped {
+                self.tapWindow = BubbleCloseWindow(frame: fullBubbleFrameOnScreen()) {
+                    leaveNow()
+                    onTapped()
+                }
+            }
             self.closeWindow = BubbleCloseWindow(frame: closeTargetFrameOnScreen()) {
                 leaveNow()
             }

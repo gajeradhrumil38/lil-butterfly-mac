@@ -14,6 +14,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var remindedMeetingID: String?
     private var latestRelease: GitHubRelease?
     private var isUpdating = false
+    /// Which release version the update reminder has already been folded
+    /// into a visit for — so it surfaces once per newly-detected version,
+    /// on the next message that would have happened anyway, rather than
+    /// nagging on every single visit.
+    private var updateReminderShownForVersion: String?
     private lazy var updateChecker = UpdateChecker(currentVersion: installedVersion)
     private lazy var selfUpdater = SelfUpdater()
     private lazy var regularStatusIcon = makeStatusIcon(updateAvailable: false)
@@ -80,20 +85,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard manualOverride || !config.paused else { return false }
         guard manualOverride || !config.suppressDuringMeetings ||
                 (!MeetingDetector.isMeetingAppActive && !meetingCalendar.isVideoMeetingActive()) else { return false }
-        // Quiet hours are gentle mode, not a hard stop: randomMessage
-        // returns nil most of the time during that window instead (see its
-        // doc comment), so a scheduled cycle can land here and legitimately
-        // decide to stay silent.
-        guard let message = config.randomMessage(manualOverride: manualOverride) else { return false }
-        let displayWidth = ButterflySize.width(forIndex: config.butterflySizeIndex)
-        if config.mode == "docked" {
-            guard let dockedOverlay else { return false }
-            dockedOverlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: config.restingSeconds)
-            return true
+
+        // Not a separate, immediate notification — just folded into
+        // whichever visit was about to happen anyway (scheduled or manual),
+        // once per newly-detected version, so it stays quiet and low-key
+        // rather than interrupting on its own.
+        let pendingUpdate = latestRelease.flatMap { release in
+            updateReminderShownForVersion == release.version ? nil : release
         }
-        guard let overlay = overlays.filter({ $0.isAvailable }).randomElement() else { return false }
-        overlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: config.restingSeconds)
-        return true
+        let message: String
+        var onTapped: (() -> Void)?
+        if let pendingUpdate {
+            message = "A new Butterfly (v\(pendingUpdate.version)) is ready. Tap here to update 🦋⬆️"
+            onTapped = { [weak self] in self?.startSelfUpdate(release: pendingUpdate) }
+        } else {
+            // Quiet hours are gentle mode, not a hard stop: randomMessage
+            // returns nil most of the time during that window instead (see
+            // its doc comment), so a scheduled cycle can land here and
+            // legitimately decide to stay silent.
+            guard let randomMessage = config.randomMessage(manualOverride: manualOverride) else { return false }
+            message = randomMessage
+        }
+
+        let displayWidth = ButterflySize.width(forIndex: config.butterflySizeIndex)
+        let dispatched: Bool
+        if config.mode == "docked" {
+            if let dockedOverlay {
+                dockedOverlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: config.restingSeconds, onTapped: onTapped)
+                dispatched = true
+            } else {
+                dispatched = false
+            }
+        } else if let overlay = overlays.filter({ $0.isAvailable }).randomElement() {
+            overlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: config.restingSeconds, onTapped: onTapped)
+            dispatched = true
+        } else {
+            dispatched = false
+        }
+
+        // Only marked "shown" once actually dispatched — a failed attempt
+        // (no available overlay) shouldn't burn the one-time chance to
+        // surface this version's reminder.
+        if dispatched, let pendingUpdate {
+            updateReminderShownForVersion = pendingUpdate.version
+        }
+        return dispatched
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) { rebuildMenu(menu) }
