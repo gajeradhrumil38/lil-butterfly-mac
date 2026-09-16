@@ -26,6 +26,7 @@ cp .build/release/Butterfly "$APP/Contents/MacOS/Butterfly"
 # script or a real .app bundle at all).
 cp -R .build/release/Butterfly_Butterfly.bundle "$APP/Contents/Resources/Butterfly_Butterfly.bundle"
 cp -R .build/release/Butterfly_Butterfly.bundle "$APP/Butterfly_Butterfly.bundle"
+cp scripts/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -38,6 +39,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <string>com.kavii.butterfly</string>
   <key>CFBundleExecutable</key>
   <string>Butterfly</string>
+  <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
