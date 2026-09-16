@@ -5,6 +5,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var overlays: [ScreenOverlay] = []
     private var dockedOverlay: DockedOverlay?
     private var kaviiRevealOverlay: KaviiRevealOverlay?
+    private var welcomeOverlay: WelcomeOverlay?
     private var config: Config = ConfigStore.load()
     private var scheduleTimer: Timer?
     private var nextFireDate: Date?
@@ -24,13 +25,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let menu = NSMenu(); menu.delegate = self; statusItem.menu = menu
         rebuildMenu(menu); scheduleNext(); updateMeetingReminderTimer()
         checkForUpdates(showResult: false)
-        // manualOverride: true so this first-impression moment is guaranteed
-        // rather than possibly getting silently skipped by quiet-hours
-        // gentle-mode gating (fireVisit's normal path can legitimately
-        // return false and stay silent — fine for a routine scheduled
-        // visit, not fine for the one message every new user is meant to
-        // actually see).
-        if !config.hasStarted, fireVisit(manualOverride: true, overrideMessage: Self.welcomeMessage) {
+        // A dedicated centered moment — a ring of butterflies bringing the
+        // message, not an ordinary edge-in roaming visit — rather than
+        // routing through fireVisit's quiet-hours/pause gating, since this
+        // first impression is meant to always play, guaranteed, exactly
+        // once per install.
+        if !config.hasStarted, let screen = preferredScreen {
+            welcomeOverlay = WelcomeOverlay(screen: screen)
+            welcomeOverlay?.show(message: Self.welcomeMessage, pinnedAssetIndex: config.pinnedAssetIndex)
             config.hasStarted = true
             ConfigStore.save(config)
         }
@@ -72,7 +74,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private static let welcomeMessage = "Hi, I'm here to gently remind you to pause sometimes. Made with a lot of care, just for you 💛"
 
     @discardableResult
-    private func fireVisit(manualOverride: Bool = false, overrideMessage: String? = nil) -> Bool {
+    private func fireVisit(manualOverride: Bool = false) -> Bool {
         guard manualOverride || !config.paused else { return false }
         guard manualOverride || !config.suppressDuringMeetings ||
                 (!MeetingDetector.isMeetingAppActive && !meetingCalendar.isVideoMeetingActive()) else { return false }
@@ -80,7 +82,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // returns nil most of the time during that window instead (see its
         // doc comment), so a scheduled cycle can land here and legitimately
         // decide to stay silent.
-        guard let message = overrideMessage ?? config.randomMessage(manualOverride: manualOverride) else { return false }
+        guard let message = config.randomMessage(manualOverride: manualOverride) else { return false }
         let displayWidth = ButterflySize.width(forIndex: config.butterflySizeIndex)
         if config.mode == "docked" {
             guard let dockedOverlay else { return false }
