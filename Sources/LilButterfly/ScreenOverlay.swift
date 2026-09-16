@@ -123,15 +123,23 @@ final class ScreenOverlay {
             }
         }
 
-        closeWindow = BubbleCloseWindow(frame: closeTargetFrameOnScreen()) {
-            leaveNow()
-        }
-
         butterfly.flyPath(from: off, to: rest, duration: 1.4, easeIn: false) {
             positionBubble(near: rest)
             butterfly.alphaValue = 1
             butterfly.startHover()
             bubble.fadeIn()
+
+            // Created only once the butterfly has actually arrived and the
+            // bubble is in its final on-screen spot — creating this upfront
+            // (before the flight) computed its frame from the bubble's
+            // still-off-screen position, which the horizontal offset math in
+            // positionBubble doesn't keep off-screen (a wide bubble anchored
+            // just past the edge extends back onto the visible screen even
+            // though the butterfly itself hasn't arrived), so the close mark
+            // showed up alone during the fly-in, well before the message did.
+            self.closeWindow = BubbleCloseWindow(frame: closeTargetFrameOnScreen()) {
+                leaveNow()
+            }
 
             DispatchQueue.main.asyncAfter(deadline: .now() + restingSeconds) {
                 leaveNow()

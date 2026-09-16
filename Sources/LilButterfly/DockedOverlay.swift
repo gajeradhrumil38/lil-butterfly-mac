@@ -209,20 +209,25 @@ final class DockedOverlay {
 
         // leaveNow is reassigned below once we know which variant is
         // running (it differs in whether the butterfly flies anywhere
-        // afterward), but the close button is wired up once, up front, so
-        // it always calls whatever leaveNow currently is — ending the
-        // visit the same way the resting timer would, just early: the
-        // message fades, then (if applicable) the butterfly departs.
+        // afterward); the close button always calls whatever leaveNow
+        // currently is — ending the visit the same way the resting timer
+        // would, just early: the message fades, then (if applicable) the
+        // butterfly departs. The window itself is created per-branch, only
+        // once the bubble's final position is known and it's about to
+        // become visible — creating it upfront (before venture-and-settle's
+        // flight to `inward`) computed its frame from the original dock
+        // spot, so the close mark showed up alone there while the message
+        // was still invisible and the butterfly was off flying elsewhere.
         var didLeave = false
         var leaveNow: () -> Void = {}
-        closeWindow = BubbleCloseWindow(frame: closeTargetFrameOnScreen()) {
-            leaveNow()
-        }
 
         if Bool.random() {
             butterfly.alphaValue = 1
             butterfly.startHover()
             bubble.fadeIn()
+            closeWindow = BubbleCloseWindow(frame: closeTargetFrameOnScreen()) {
+                leaveNow()
+            }
 
             leaveNow = {
                 guard !didLeave, self.visitID == currentVisitID else { return }
@@ -249,6 +254,9 @@ final class DockedOverlay {
                 butterfly.alphaValue = 1
                 butterfly.startHover()
                 bubble.fadeIn()
+                self.closeWindow = BubbleCloseWindow(frame: closeTargetFrameOnScreen()) {
+                    leaveNow()
+                }
 
                 leaveNow = {
                     guard !didLeave, self.visitID == currentVisitID else { return }
