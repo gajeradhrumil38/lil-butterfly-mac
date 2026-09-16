@@ -10,7 +10,7 @@ final class DockedOverlay {
     private var isBusy = false
     private var butterfly: ButterflyView?
     private var closeWindow: BubbleCloseWindow?
-    private var actionButtonWindow: UpdateActionButtonWindow?
+    private var choiceWindows: [ChoiceButtonWindow] = []
     private var handleWindow: DockedButterflyHandleWindow?
     private var edge: ScreenEdge
     private var positionFraction: Double?
@@ -166,8 +166,8 @@ final class DockedOverlay {
         isBusy = false
         closeWindow?.orderOut(nil)
         closeWindow = nil
-        actionButtonWindow?.orderOut(nil)
-        actionButtonWindow = nil
+        choiceWindows.forEach { $0.orderOut(nil) }
+        choiceWindows.removeAll()
         window.contentView?.subviews.forEach { $0.removeFromSuperview() }
         butterfly?.layer?.removeAllAnimations()
         butterfly = nil
@@ -181,7 +181,8 @@ final class DockedOverlay {
         isBusy = true
         visitID += 1
         let currentVisitID = visitID
-        let bubble = BubbleView(message: message, actionTitle: actionTitle)
+        let choiceLabels: [String] = actionTitle.map { [$0] } ?? []
+        let bubble = BubbleView(message: message, choiceLabels: choiceLabels)
         host.addSubview(bubble)
 
         func bubbleLocalRectOnScreen(_ local: CGRect) -> CGRect {
@@ -193,7 +194,7 @@ final class DockedOverlay {
             return CGRect(origin: targetOnScreen, size: local.size)
         }
         func closeTargetFrameOnScreen() -> CGRect { bubbleLocalRectOnScreen(bubble.closeTargetFrame) }
-        func actionButtonFrameOnScreen() -> CGRect { bubbleLocalRectOnScreen(bubble.actionButtonFrame) }
+        func choiceFrameOnScreen(_ index: Int) -> CGRect { bubbleLocalRectOnScreen(bubble.choiceFrame(at: index)) }
 
         func positionBubble(near point: CGPoint) {
             let onRight = point.x > screenFrame.width / 2
@@ -207,8 +208,8 @@ final class DockedOverlay {
             if let closeWindow = self.closeWindow {
                 closeWindow.setFrame(closeTargetFrameOnScreen(), display: true)
             }
-            if let actionButtonWindow = self.actionButtonWindow {
-                actionButtonWindow.setFrame(actionButtonFrameOnScreen(), display: true)
+            for (index, window) in self.choiceWindows.enumerated() {
+                window.setFrame(choiceFrameOnScreen(index), display: true)
             }
             self.updateHandleWindowFrame()
         }
@@ -233,10 +234,11 @@ final class DockedOverlay {
             butterfly.startHover()
             bubble.fadeIn()
             if let onTapped {
-                actionButtonWindow = UpdateActionButtonWindow(frame: actionButtonFrameOnScreen(), title: actionTitle ?? "Update") {
+                let window = ChoiceButtonWindow(frame: choiceFrameOnScreen(0), title: actionTitle ?? "Update", style: .accentCapsule) {
                     leaveNow()
                     onTapped()
                 }
+                choiceWindows = [window]
             }
             closeWindow = BubbleCloseWindow(frame: closeTargetFrameOnScreen()) {
                 leaveNow()
@@ -249,8 +251,8 @@ final class DockedOverlay {
                 bubble.fadeOut {
                     self.closeWindow?.orderOut(nil)
                     self.closeWindow = nil
-                    self.actionButtonWindow?.orderOut(nil)
-                    self.actionButtonWindow = nil
+                    self.choiceWindows.forEach { $0.orderOut(nil) }
+                    self.choiceWindows.removeAll()
                     guard self.visitID == currentVisitID else { return }
                     bubble.removeFromSuperview()
                     self.isBusy = false
@@ -270,10 +272,11 @@ final class DockedOverlay {
                 butterfly.startHover()
                 bubble.fadeIn()
                 if let onTapped {
-                    self.actionButtonWindow = UpdateActionButtonWindow(frame: actionButtonFrameOnScreen(), title: actionTitle ?? "Update") {
+                    let window = ChoiceButtonWindow(frame: choiceFrameOnScreen(0), title: actionTitle ?? "Update", style: .accentCapsule) {
                         leaveNow()
                         onTapped()
                     }
+                    self.choiceWindows = [window]
                 }
                 self.closeWindow = BubbleCloseWindow(frame: closeTargetFrameOnScreen()) {
                     leaveNow()
@@ -286,8 +289,8 @@ final class DockedOverlay {
                     bubble.fadeOut {
                         self.closeWindow?.orderOut(nil)
                         self.closeWindow = nil
-                        self.actionButtonWindow?.orderOut(nil)
-                        self.actionButtonWindow = nil
+                        self.choiceWindows.forEach { $0.orderOut(nil) }
+                        self.choiceWindows.removeAll()
                         guard self.visitID == currentVisitID else { return }
                         bubble.removeFromSuperview()
                         butterfly.flyPath(from: butterfly.centerPosition, to: self.dockPoint(margin: 40), duration: 1.2, easeIn: true) {
