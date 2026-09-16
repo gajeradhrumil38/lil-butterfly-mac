@@ -5,8 +5,16 @@ final class BubbleView: NSView {
     private let effectView = NSVisualEffectView()
     private let label = NSTextView(frame: .zero)
     private let tail = NSView()
+    private let tailShape = CAShapeLayer()
     private let dotsContainer = NSView()
     private var didRevealText = false
+    private var tailOnRight = false
+
+    /// Classic chat-bubble corner radius (not a full pill) — capped so short,
+    /// one-line messages don't turn back into a pill by accident.
+    private static let cornerRadius: CGFloat = 18
+    private static let tailSpan: CGFloat = 16 // width of the tail's own frame
+    private static let tailHeight: CGFloat = 16
 
     /// The only interactive region gets its own tiny window so the
     /// full-screen overlay can remain click-through. Inset evenly from the
@@ -42,9 +50,8 @@ final class BubbleView: NSView {
         addSubview(effectView)
 
         tail.wantsLayer = true
-        tail.layer?.backgroundColor = NSColor(calibratedWhite: 0.12, alpha: 0.82).cgColor
-        tail.layer?.cornerRadius = 3
-        tail.layer?.setAffineTransform(CGAffineTransform(rotationAngle: .pi / 4))
+        tailShape.fillColor = NSColor(calibratedWhite: 0.12, alpha: 0.82).cgColor
+        tail.layer?.addSublayer(tailShape)
         addSubview(tail, positioned: .below, relativeTo: effectView)
 
         layer?.shadowColor = NSColor.black.cgColor
@@ -100,10 +107,10 @@ final class BubbleView: NSView {
         let height = textHeight + 20
         frame = CGRect(x: 0, y: 0, width: width, height: height)
         effectView.frame = CGRect(x: 0, y: 0, width: width, height: height)
-        effectView.layer?.cornerRadius = height / 2 // full pill/capsule shape
+        effectView.layer?.cornerRadius = min(Self.cornerRadius, height / 2)
         effectView.layer?.sublayers?.first(where: { $0 is CAGradientLayer })?.frame = effectView.bounds
-        tail.frame = CGRect(x: -4, y: height / 2 - 6, width: 12, height: 12) // vertically centered on the pill
         label.frame = CGRect(x: 14, y: 10, width: textWidth, height: textHeight)
+        layoutTail()
 
         setUpDots(in: label.frame)
         addSubview(dotsContainer)
@@ -159,7 +166,34 @@ final class BubbleView: NSView {
     }
 
     func pointTailTowardButterfly(onRight: Bool) {
-        tail.frame.origin.x = onRight ? frame.width - 8 : -4
+        tailOnRight = onRight
+        layoutTail()
+    }
+
+    /// A small curved wedge (like a classic chat-bubble tail) attached to
+    /// the card's left or right edge, tapering to a point toward whichever
+    /// side the butterfly is on — not the diamond notch this used to be.
+    private func layoutTail() {
+        let span = Self.tailSpan
+        let tailHeight = Self.tailHeight
+        tail.frame = CGRect(
+            x: tailOnRight ? frame.width : -span,
+            y: frame.height / 2 - tailHeight / 2,
+            width: span, height: tailHeight
+        )
+        let path = CGMutablePath()
+        if tailOnRight {
+            path.move(to: CGPoint(x: 0, y: 3))
+            path.addQuadCurve(to: CGPoint(x: span, y: tailHeight / 2), control: CGPoint(x: span / 2, y: 1))
+            path.addQuadCurve(to: CGPoint(x: 0, y: tailHeight - 3), control: CGPoint(x: span / 2, y: tailHeight - 1))
+        } else {
+            path.move(to: CGPoint(x: span, y: 3))
+            path.addQuadCurve(to: CGPoint(x: 0, y: tailHeight / 2), control: CGPoint(x: span / 2, y: 1))
+            path.addQuadCurve(to: CGPoint(x: span, y: tailHeight - 3), control: CGPoint(x: span / 2, y: tailHeight - 1))
+        }
+        path.closeSubpath()
+        tailShape.frame = tail.bounds
+        tailShape.path = path
     }
 
     func fadeIn() {
