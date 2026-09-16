@@ -39,7 +39,7 @@ final class ScreenOverlay {
     private let screenFrame: CGRect
     private var isBusy = false
     private var closeWindow: BubbleCloseWindow?
-    private var tapWindow: BubbleCloseWindow?
+    private var tapWindow: BubbleTapWindow?
 
     init(screen: NSScreen) {
         self.window = OverlayWindow(screen: screen)
@@ -153,7 +153,7 @@ final class ScreenOverlay {
             // overlapping corner — tapping anywhere else on the card
             // triggers onTapped instead of just dismissing.
             if let onTapped {
-                self.tapWindow = BubbleCloseWindow(frame: fullBubbleFrameOnScreen()) {
+                self.tapWindow = BubbleTapWindow(frame: fullBubbleFrameOnScreen()) {
                     leaveNow()
                     onTapped()
                 }

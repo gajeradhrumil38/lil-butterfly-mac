@@ -10,7 +10,7 @@ final class DockedOverlay {
     private var isBusy = false
     private var butterfly: ButterflyView?
     private var closeWindow: BubbleCloseWindow?
-    private var tapWindow: BubbleCloseWindow?
+    private var tapWindow: BubbleTapWindow?
     private var handleWindow: DockedButterflyHandleWindow?
     private var edge: ScreenEdge
     private var positionFraction: Double?
@@ -233,7 +233,7 @@ final class DockedOverlay {
             butterfly.startHover()
             bubble.fadeIn()
             if let onTapped {
-                tapWindow = BubbleCloseWindow(frame: fullBubbleFrameOnScreen()) {
+                tapWindow = BubbleTapWindow(frame: fullBubbleFrameOnScreen()) {
                     leaveNow()
                     onTapped()
                 }
@@ -270,7 +270,7 @@ final class DockedOverlay {
                 butterfly.startHover()
                 bubble.fadeIn()
                 if let onTapped {
-                    self.tapWindow = BubbleCloseWindow(frame: fullBubbleFrameOnScreen()) {
+                    self.tapWindow = BubbleTapWindow(frame: fullBubbleFrameOnScreen()) {
                         leaveNow()
                         onTapped()
                     }
