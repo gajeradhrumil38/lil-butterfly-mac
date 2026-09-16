@@ -101,17 +101,35 @@ final class ButterflyView: NSView {
         root.shadowOffset = CGSize(width: 0, height: -2)
     }
 
+    /// A flat horizontal scale squish reads as the wing shrinking rather
+    /// than folding, since there's no sense of it turning in space. Perspec-
+    /// tive on the root layer plus a Y-axis rotation hinged at each wing's
+    /// anchorPoint (already pinned to its body-side edge) makes the tip
+    /// genuinely foreshorten toward/away from the viewer as it swings —
+    /// much closer to a real wing flap for the same animation cost.
     private func startFlutter() {
-        let flutter = CABasicAnimation(keyPath: "transform.scale.x")
-        flutter.fromValue = 1.0
-        flutter.toValue = 0.55
+        var perspective = CATransform3DIdentity
+        perspective.m34 = -1.0 / 600
+        layer?.sublayerTransform = perspective
+
+        let flapAmplitude: CGFloat = 1.15 // radians; short of pi/2 so the wing never goes fully edge-on
+
+        let flutter = CABasicAnimation(keyPath: "transform.rotation.y")
+        flutter.fromValue = 0
+        flutter.toValue = flapAmplitude
         flutter.duration = 0.42
         flutter.autoreverses = true
         flutter.repeatCount = .infinity
         flutter.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
         leftWing.add(flutter, forKey: "flutter")
 
+        // The two wings' anchorPoints are mirrored (each pinned to its own
+        // body-side edge), so mirroring the rotation's sign too is what
+        // keeps both tips foreshortening together instead of one swinging
+        // toward the viewer while the other swings away.
         let flutterDelayed = flutter.copy() as! CABasicAnimation
+        flutterDelayed.fromValue = 0
+        flutterDelayed.toValue = -flapAmplitude
         flutterDelayed.beginTime = CACurrentMediaTime() + 0.02
         rightWing.add(flutterDelayed, forKey: "flutter")
     }
