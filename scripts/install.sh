@@ -13,6 +13,50 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# A little butterfly grows on screen, line by line, top to bottom, while the
+# real download happens in the background — a small flourish rather than a
+# bare progress bar. Paced deliberately slow (not tied to actual download
+# speed, which is usually too fast to see) so it reads as an animation
+# instead of a flicker; if the download finishes before the art does, it
+# keeps drawing anyway, and if the download runs long, it flutters in place
+# until done rather than just sitting on a finished picture.
+draw_butterfly_download() {
+    local url="$1" out="$2"
+    local frame=(
+        "        \\   /"
+        "         \\ /"
+        "      .-'''-."
+        "     /   .   \\"
+        "    ;  .   .  ;"
+        "     \\   '   /"
+        "      '-...-'"
+        "        | |"
+        "       /   \\"
+    )
+
+    curl -fL -s "$url" -o "$out" &
+    local curl_pid=$!
+
+    for line in "${frame[@]}"; do
+        printf '  %s\n' "$line"
+        sleep 0.1
+    done
+
+    local flutter=("  ~ fluttering closer ~" "  ~ almost here ~")
+    local i=0
+    while kill -0 "$curl_pid" 2>/dev/null; do
+        printf '\r%s' "${flutter[$((i % ${#flutter[@]}))]}"
+        i=$((i + 1))
+        sleep 0.35
+    done
+    printf '\r%*s\r' "24" ""
+
+    if ! wait "$curl_pid"; then
+        echo "Could not download Butterfly. Please check the internet connection and try again."
+        exit 1
+    fi
+}
+
 if [[ "$(uname -s)" != "Darwin" ]]; then
     echo "Butterfly can only be installed on a Mac."
     exit 1
@@ -38,7 +82,7 @@ case "$DOWNLOAD_URL" in
 esac
 
 echo "Downloading Butterfly…"
-curl -fL --progress-bar "$DOWNLOAD_URL" -o "$ARCHIVE_PATH"
+draw_butterfly_download "$DOWNLOAD_URL" "$ARCHIVE_PATH"
 mkdir -p "$EXTRACT_DIR"
 ditto -x -k "$ARCHIVE_PATH" "$EXTRACT_DIR"
 

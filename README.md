@@ -40,9 +40,15 @@ When the icon changes to **🦋↑**:
 
 The newest Butterfly will be installed and your preferences will stay saved.
 
+## Quit it by accident?
+
+Quitting Butterfly doesn't uninstall it — it's still in your **Applications** folder. To open it again:
+
+- Press **⌘ Command + Space**, type **Butterfly**, then press Return, or
+- Open it from your **Applications** folder.
+
 ## Need help?
 
-- Open Butterfly again from your **Applications** folder.
 - Look for 🦋 in the menu bar at the top of the screen.
 - Make sure Butterfly is not paused.
 

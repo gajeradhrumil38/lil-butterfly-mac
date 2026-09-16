@@ -21,3 +21,7 @@ Butterfly opens automatically. Look for **🦋 at the top of your screen**, clic
 ## Updates
 
 When the icon changes to **🦋↑**, click it and choose **Update available**. Run the same command above to install the newest version. Your preferences will stay saved.
+
+## Quit it by accident?
+
+Quitting Butterfly doesn't uninstall it. To open it again, press **⌘ Command + Space**, type **Butterfly**, then press Return — or open it from your **Applications** folder.
