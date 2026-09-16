@@ -8,6 +8,12 @@ import AppKit
 /// and what's clickable are always the same window, never split into two.
 final class ChoiceButtonWindow: NSPanel {
 
+    enum Feedback {
+        case none
+        case scale
+        case selectedChip
+    }
+
     /// Visual style for the button's own content — lets the same window
     /// type render either the update reminder's filled accent capsule or a
     /// plain emoji/word chip with no background of its own.
@@ -36,20 +42,46 @@ final class ChoiceButtonWindow: NSPanel {
             cornerRadius: 0,
             hasBackground: false
         )
+
+        static let textChip = Style(
+            backgroundColor: .clear,
+            textColor: .white,
+            font: NSFont.systemFont(ofSize: 12.5, weight: .medium),
+            cornerRadius: 10,
+            hasBackground: false
+        )
+    }
+
+    static func style(for checkInStyle: CheckInStyle) -> Style {
+        switch checkInStyle {
+        case .smilePrompt, .gratitudeTap, .pickAWord: return .textChip
+        case .moodPicker, .favoriteColor: return .plainChip
+        }
+    }
+
+    static func feedback(for checkInStyle: CheckInStyle) -> Feedback {
+        switch checkInStyle {
+        case .smilePrompt, .gratitudeTap, .pickAWord: return .selectedChip
+        case .moodPicker, .favoriteColor: return .scale
+        }
     }
 
     private let onClick: () -> Void
     private let dismissesOnClick: Bool
+    private let feedback: Feedback
+    private weak var button: NSButton?
 
     init(
         frame: NSRect,
         title: String,
         style: Style = .accentCapsule,
         dismissesOnClick: Bool = true,
+        feedback: Feedback = .none,
         onClick: @escaping () -> Void
     ) {
         self.onClick = onClick
         self.dismissesOnClick = dismissesOnClick
+        self.feedback = feedback
         super.init(
             contentRect: frame,
             styleMask: [.borderless, .nonactivatingPanel],
@@ -81,6 +113,7 @@ final class ChoiceButtonWindow: NSPanel {
         button.autoresizingMask = [.width, .height]
         button.target = self
         button.action = #selector(tapped)
+        self.button = button
         contentView = NSView(frame: NSRect(origin: .zero, size: frame.size))
         contentView?.addSubview(button)
 
@@ -91,9 +124,26 @@ final class ChoiceButtonWindow: NSPanel {
     override var canBecomeMain: Bool { false }
 
     @objc private func tapped() {
+        animateFeedback()
         onClick()
         if dismissesOnClick {
             orderOut(nil)
         }
+    }
+
+    private func animateFeedback() {
+        guard let button, feedback != .none else { return }
+        if feedback == .selectedChip {
+            button.layer?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.9).cgColor
+            button.layer?.cornerRadius = 10
+        }
+        let scale: CGFloat = feedback == .selectedChip ? 1.08 : 1.16
+        let animation = CABasicAnimation(keyPath: "transform")
+        animation.fromValue = CATransform3DIdentity
+        animation.toValue = CATransform3DMakeScale(scale, scale, 1)
+        animation.duration = 0.18
+        animation.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        button.layer?.add(animation, forKey: "choiceFeedback")
+        button.layer?.transform = CATransform3DMakeScale(scale, scale, 1)
     }
 }

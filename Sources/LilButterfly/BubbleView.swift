@@ -26,8 +26,7 @@ final class BubbleView: NSView {
     }
 
     private static let choiceRowHeight: CGFloat = 32
-    private static let choiceAreaHeight: CGFloat = choiceRowHeight + 18 // row + gap above it
-    private var choiceCount = 0
+    private var choiceFrames: [CGRect] = []
 
     /// The rect for one choice slot in the reserved bottom row, inside the
     /// same rounded rectangle as the message — not a separate floating pill
@@ -36,20 +35,11 @@ final class BubbleView: NSView {
     /// choice keeps the update button's existing fixed 116pt-wide centered
     /// look; more than one spreads evenly across the card's content width.
     func choiceFrame(at index: Int) -> CGRect {
-        guard choiceCount > 0 else { return .zero }
-        if choiceCount == 1 {
-            let size = CGSize(width: 116, height: Self.choiceRowHeight)
-            return CGRect(x: (frame.width - size.width) / 2, y: 10, width: size.width, height: size.height)
-        }
-        let horizontalPadding: CGFloat = 14
-        let spacing: CGFloat = 6
-        let contentWidth = frame.width - horizontalPadding * 2
-        let slotWidth = (contentWidth - spacing * CGFloat(choiceCount - 1)) / CGFloat(choiceCount)
-        let x = horizontalPadding + CGFloat(index) * (slotWidth + spacing)
-        return CGRect(x: x, y: 10, width: slotWidth, height: Self.choiceRowHeight)
+        guard choiceFrames.indices.contains(index) else { return .zero }
+        return choiceFrames[index]
     }
 
-    init(message: String, choiceLabels: [String] = []) {
+    init(message: String, choiceLabels: [String] = [], checkInStyle: CheckInStyle? = nil) {
         super.init(frame: .zero)
         wantsLayer = true
         effectView.material = .hudWindow
@@ -97,7 +87,7 @@ final class BubbleView: NSView {
         ))
         addSubview(label)
 
-        let maxWidth: CGFloat = 280
+        let maxWidth: CGFloat = checkInStyle == .favoriteColor ? 380 : 360
         // 14pt left inset + 26pt on the right to clear the close (✕) button
         // that sits in the top-right corner (see closeTargetFrame above).
         let horizontalPadding: CGFloat = 40
@@ -110,7 +100,13 @@ final class BubbleView: NSView {
         // Pick the compact width from the natural one-line measurement, then
         // measure again at that final width. The second pass is important:
         // resizing a medium-length sentence can create an extra wrapped line.
-        let width = min(maxWidth, max(150, ceil(naturalMeasured.width) + horizontalPadding))
+        let minimumChoiceWidth: CGFloat
+        switch checkInStyle {
+        case .favoriteColor: minimumChoiceWidth = 360
+        case .moodPicker: minimumChoiceWidth = 300
+        default: minimumChoiceWidth = choiceLabels.isEmpty ? 0 : 270
+        }
+        let width = min(maxWidth, max(150, ceil(naturalMeasured.width) + horizontalPadding, minimumChoiceWidth))
         let textWidth = width - horizontalPadding
 
         // Ask TextKit for the height of the actual laid-out glyphs. Unlike
@@ -121,8 +117,11 @@ final class BubbleView: NSView {
         layoutManager.ensureLayout(for: textContainer)
         let usedRect = layoutManager.usedRect(for: textContainer)
         let textHeight = ceil(max(usedRect.height, font.ascender - font.descender + font.leading))
-        choiceCount = choiceLabels.count
-        let choiceAreaHeight: CGFloat = choiceLabels.isEmpty ? 0 : Self.choiceAreaHeight
+        choiceFrames = Self.makeChoiceFrames(labels: choiceLabels, width: width, style: checkInStyle)
+        let rowCount = choiceFrames.reduce(into: 0) { result, choiceFrame in
+            result = max(result, Int((choiceFrame.minY - 10) / (Self.choiceRowHeight + 6)) + 1)
+        }
+        let choiceAreaHeight: CGFloat = choiceLabels.isEmpty ? 0 : 18 + CGFloat(rowCount) * Self.choiceRowHeight + CGFloat(max(0, rowCount - 1)) * 6
         let height = textHeight + 20 + choiceAreaHeight
         frame = CGRect(x: 0, y: 0, width: width, height: height)
         effectView.frame = CGRect(x: 0, y: 0, width: width, height: height)
@@ -135,6 +134,36 @@ final class BubbleView: NSView {
     }
 
     required init?(coder: NSCoder) { fatalError("unavailable") }
+
+    private static func makeChoiceFrames(labels: [String], width: CGFloat, style: CheckInStyle?) -> [CGRect] {
+        guard !labels.isEmpty else { return [] }
+        let padding: CGFloat = 14
+        let spacing: CGFloat = 6
+        let contentWidth = width - padding * 2
+        let isChipLayout = style == .smilePrompt || style == .gratitudeTap || style == .pickAWord
+        guard isChipLayout else {
+            let slotWidth = (contentWidth - spacing * CGFloat(labels.count - 1)) / CGFloat(labels.count)
+            return labels.indices.map { index in
+                CGRect(x: padding + CGFloat(index) * (slotWidth + spacing), y: 10, width: slotWidth, height: choiceRowHeight)
+            }
+        }
+
+        let font = NSFont.systemFont(ofSize: 12.5, weight: .medium)
+        var result: [CGRect] = []
+        var x = padding
+        var y: CGFloat = 10
+        for label in labels {
+            let measured = (label as NSString).size(withAttributes: [.font: font])
+            let chipWidth = min(contentWidth, max(58, ceil(measured.width) + 24))
+            if x > padding && x + chipWidth > width - padding {
+                x = padding
+                y += choiceRowHeight + spacing
+            }
+            result.append(CGRect(x: x, y: y, width: chipWidth, height: choiceRowHeight))
+            x += chipWidth + spacing
+        }
+        return result
+    }
 
     /// A brief "..." pulse shown in place of the text, like a chat message
     /// arriving, before revealText() cross-fades to the real message. Sized

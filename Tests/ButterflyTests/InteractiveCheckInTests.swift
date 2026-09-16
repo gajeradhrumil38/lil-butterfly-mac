@@ -66,4 +66,16 @@ final class InteractiveCheckInTests: XCTestCase {
             XCTAssertTrue(content.choices.allSatisfy { !$0.label.isEmpty && !$0.replies.isEmpty })
         }
     }
+
+    func testChoiceLayoutsGiveHeartsRoomAndWrapTextChips() {
+        let hearts = CheckInContent.make(style: .favoriteColor)
+        let heartBubble = BubbleView(message: hearts.question, choiceLabels: hearts.choices.map(\.label), checkInStyle: hearts.style)
+        XCTAssertGreaterThanOrEqual(heartBubble.frame.width, 360)
+        XCTAssertTrue((0..<hearts.choices.count).allSatisfy { heartBubble.choiceFrame(at: $0).width >= 40 })
+
+        let words = CheckInContent.make(style: .pickAWord)
+        let wordBubble = BubbleView(message: words.question, choiceLabels: words.choices.map(\.label), checkInStyle: words.style)
+        XCTAssertTrue((0..<words.choices.count).allSatisfy { wordBubble.choiceFrame(at: $0).width >= 58 })
+        XCTAssertGreaterThan(wordBubble.frame.height, heartBubble.frame.height - 20)
+    }
 }

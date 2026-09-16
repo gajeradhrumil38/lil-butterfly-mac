@@ -89,7 +89,7 @@ final class ScreenOverlay {
         } else {
             choiceLabels = []
         }
-        let bubble = BubbleView(message: message, choiceLabels: choiceLabels)
+        let bubble = BubbleView(message: message, choiceLabels: choiceLabels, checkInStyle: checkIn?.style)
         host.addSubview(bubble)
 
         func bubbleLocalRectOnScreen(_ local: CGRect) -> CGRect {
@@ -170,7 +170,7 @@ final class ScreenOverlay {
                 // update button does — the reply is the whole point of a
                 // check-in, so it needs time to actually be read.
                 self.choiceWindows = checkIn.choices.enumerated().map { index, choice in
-                    ChoiceButtonWindow(frame: choiceFrameOnScreen(index), title: choice.label, style: .plainChip, dismissesOnClick: false) {
+                    ChoiceButtonWindow(frame: choiceFrameOnScreen(index), title: choice.label, style: ChoiceButtonWindow.style(for: checkIn.style), dismissesOnClick: false, feedback: ChoiceButtonWindow.feedback(for: checkIn.style)) {
                         CheckInStore.record(style: checkIn.style.rawValue, choice: choice.label)
                         bubble.revealReply(choice.replies.randomElement() ?? choice.replies[0])
                         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
@@ -182,7 +182,8 @@ final class ScreenOverlay {
                 let window = ChoiceButtonWindow(
                     frame: choiceFrameOnScreen(0),
                     title: actionTitle ?? "Update",
-                    style: .accentCapsule
+                    style: .accentCapsule,
+                    feedback: .scale
                 ) {
                     leaveNow()
                     onTapped()
