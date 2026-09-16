@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/assets/wings/Asset%204.svg" width="170" alt="Butterfly">
+  <img src="docs/assets/wings/Asset%201.svg" width="170" alt="Butterfly">
   <h1>Butterfly</h1>
   <p>A little butterfly for your Mac that visits with kind messages.</p>
 </div>
