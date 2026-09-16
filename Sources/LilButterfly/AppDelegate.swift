@@ -71,7 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// Shown once, in place of the usual random pool, on the very first
     /// visit after a fresh install — a proper introduction rather than
     /// whatever the dice happened to land on.
-    private static let welcomeMessage = "Hi, I'm here to gently remind you to pause sometimes. Made with a lot of care, just for you 💛"
+    private static let welcomeMessage = "Hi there — just a gentle reminder to pause sometimes. I know you're hardworking and dedicated, but you deserve rest too. Made with a lot of care, just for you 🦋"
 
     @discardableResult
     private func fireVisit(manualOverride: Bool = false) -> Bool {
