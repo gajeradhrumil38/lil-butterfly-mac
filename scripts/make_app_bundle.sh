@@ -13,12 +13,19 @@ APP="Butterfly.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/Butterfly "$APP/Contents/MacOS/Butterfly"
-# Bundle.module's generated accessor looks in Bundle.main.resourceURL first,
-# which for a real .app is Contents/Resources — not Contents/ directly. This
-# was the actual cause of "could not load resource bundle" crashing every
-# release build on first launch (never caught by `swift run`, which doesn't
-# use this script or a real .app bundle at all).
+# SwiftPM's generated Bundle.module accessor has shipped more than one
+# implementation across toolchain versions: newer ones check
+# Bundle.main.resourceURL (Contents/Resources) with a fallback chain, but the
+# simpler variant (confirmed via a real crash log from a CI-built release)
+# only checks Bundle.main.bundleURL — the .app's own top level, alongside
+# Contents/. Since which one gets generated depends on the compiling
+# toolchain, not our code, copy the bundle to every location either variant
+# might look — it's a few small SVGs, duplicating it is cheap and this is the
+# actual cause of "could not load resource bundle" crashing every release
+# build on first launch (never caught by `swift run`, which doesn't use this
+# script or a real .app bundle at all).
 cp -R .build/release/Butterfly_Butterfly.bundle "$APP/Contents/Resources/Butterfly_Butterfly.bundle"
+cp -R .build/release/Butterfly_Butterfly.bundle "$APP/Butterfly_Butterfly.bundle"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
