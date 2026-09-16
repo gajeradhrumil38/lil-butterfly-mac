@@ -51,5 +51,5 @@ You can also open the separate [installation page](INSTALL.md).
 ---
 
 <div align="center">
-  <sub>Made with care for macOS 13 and newer.</sub>
+  <sub>Made with care for macOS 14 (Sonoma) and newer, Apple Silicon.</sub>
 </div>

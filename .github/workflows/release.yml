@@ -9,64 +9,24 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build ${{ matrix.arch }}
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      matrix:
-        include:
-          - runner: macos-14
-            arch: arm64
-          - runner: macos-15-intel
-            arch: x86_64
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v4
-
-      - name: Build executable
-        run: swift build -c release
-
-      - name: Prepare architecture
-        run: cp .build/release/Butterfly "Butterfly-${{ matrix.arch }}"
-
-      - name: Upload executable
-        uses: actions/upload-artifact@v4
-        with:
-          name: binary-${{ matrix.arch }}
-          path: Butterfly-${{ matrix.arch }}
-          if-no-files-found: error
-
   package:
-    name: Create universal app
-    needs: build
+    name: Build and package
     runs-on: macos-14
     steps:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Download both architectures
-        uses: actions/download-artifact@v4
-        with:
-          pattern: binary-*
-          path: dist
-          merge-multiple: true
-
-      - name: Package one download for every Mac
+      - name: Build and package app bundle
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          VERSION="${RELEASE_TAG#v}"
-          APP_VERSION="$VERSION" ./scripts/make_app_bundle.sh
-          lipo -create dist/Butterfly-arm64 dist/Butterfly-x86_64 \
-            -output Butterfly.app/Contents/MacOS/Butterfly
-          chmod +x Butterfly.app/Contents/MacOS/Butterfly
-          lipo -info Butterfly.app/Contents/MacOS/Butterfly
-          ditto -c -k --sequesterRsrc --keepParent Butterfly.app "Butterfly-$VERSION.zip"
+          APP_VERSION="${RELEASE_TAG#v}" ./scripts/make_app_bundle.sh
+          ditto -c -k --sequesterRsrc --keepParent Butterfly.app "Butterfly-${RELEASE_TAG#v}.zip"
 
-      - name: Upload universal app
+      - name: Upload app
         uses: actions/upload-artifact@v4
         with:
-          name: Butterfly-universal
+          name: Butterfly-app
           path: Butterfly-*.zip
           if-no-files-found: error
 
@@ -75,10 +35,10 @@ jobs:
     needs: package
     runs-on: ubuntu-latest
     steps:
-      - name: Download universal app
+      - name: Download app
         uses: actions/download-artifact@v4
         with:
-          name: Butterfly-universal
+          name: Butterfly-app
           path: dist
 
       - name: Create release and attach app
