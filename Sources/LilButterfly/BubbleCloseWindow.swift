@@ -26,29 +26,20 @@ final class BubbleCloseWindow: NSPanel {
             .fullScreenAuxiliary,
         ]
 
-        let glass = NSVisualEffectView(frame: NSRect(origin: .zero, size: frame.size))
-        glass.material = .popover
-        glass.blendingMode = .withinWindow
-        glass.state = .active
-        glass.wantsLayer = true
-        glass.layer?.cornerRadius = frame.width / 2
-        glass.layer?.masksToBounds = true
-        glass.layer?.borderWidth = 1
-        glass.layer?.borderColor = NSColor.white.withAlphaComponent(0.22).cgColor
-        glass.autoresizingMask = [.width, .height]
-
         let button = NSButton(frame: NSRect(origin: .zero, size: frame.size))
-        button.image = NSImage(systemSymbolName: "xmark", accessibilityDescription: "Close message")
+        let symbolConfig = NSImage.SymbolConfiguration(pointSize: 10, weight: .semibold)
+        button.image = NSImage(systemSymbolName: "xmark", accessibilityDescription: "Close message")?
+            .withSymbolConfiguration(symbolConfig)
         button.imagePosition = .imageOnly
+        button.imageScaling = .scaleProportionallyDown
         button.bezelStyle = .inline
         button.isBordered = false
-        button.contentTintColor = NSColor.white.withAlphaComponent(0.82)
+        button.contentTintColor = NSColor.white.withAlphaComponent(0.7)
         button.toolTip = "Dismiss message"
         button.autoresizingMask = [.width, .height]
         button.target = self
         button.action = #selector(closeTapped)
         contentView = NSView(frame: NSRect(origin: .zero, size: frame.size))
-        contentView?.addSubview(glass)
         contentView?.addSubview(button)
 
         orderFrontRegardless()
