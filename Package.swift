@@ -14,6 +14,11 @@ let package = Package(
                 .copy("Resources/Wings"),
                 .copy("Resources/ICON.svg")
             ]
+        ),
+        .testTarget(
+            name: "ButterflyTests",
+            dependencies: ["Butterfly"],
+            path: "Tests/ButterflyTests"
         )
     ]
 )

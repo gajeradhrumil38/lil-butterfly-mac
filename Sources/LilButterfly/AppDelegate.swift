@@ -81,7 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private static let welcomeMessage = "Hi there — just a gentle reminder to pause sometimes. I know you're hardworking and dedicated, but you deserve rest too. Made with a lot of care, just for you 🦋"
 
     @discardableResult
-    private func fireVisit(manualOverride: Bool = false) -> Bool {
+    private func fireVisit(manualOverride: Bool = false, forcedCheckIn: CheckInContent? = nil) -> Bool {
         guard manualOverride || !config.paused else { return false }
         guard manualOverride || !config.suppressDuringMeetings ||
                 (!MeetingDetector.isMeetingAppActive && !meetingCalendar.isVideoMeetingActive()) else { return false }
@@ -101,7 +101,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // seconds a one-line message normally gets — longer than whatever
         // the user configured, specifically for this message.
         var restingSeconds = config.restingSeconds
-        if let pendingUpdate {
+        if let forcedCheckIn {
+            checkIn = forcedCheckIn
+            message = forcedCheckIn.question
+            restingSeconds = max(config.restingSeconds, 14)
+        } else if let pendingUpdate {
             message = "A new Butterfly (v\(pendingUpdate.version)) is ready."
             actionTitle = "Update Now"
             onTapped = { [weak self] in self?.startSelfUpdate(release: pendingUpdate) }
@@ -181,6 +185,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             addItem(to: menu, title: "Check for Updates…", action: #selector(checkForUpdatesTapped), symbol: "arrow.triangle.2.circlepath")
         }
         addItem(to: menu, title: "Show Butterfly", action: #selector(showNowTapped), symbol: "sparkles")
+        addItem(to: menu, title: "Test Interactive Check-In", action: #selector(testInteractiveCheckInTapped), symbol: "hand.tap")
         addItem(
             to: menu,
             title: config.paused ? "Resume Visits" : "Pause Visits",
@@ -389,6 +394,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func showNowTapped() { _ = fireVisit(manualOverride: true) }
+
+    /// Opens a check-in on demand so every choice can be exercised without
+    /// waiting for the scheduled visit or the occasional-content chance.
+    @objc private func testInteractiveCheckInTapped() {
+        _ = fireVisit(manualOverride: true, forcedCheckIn: CheckInContent.random())
+    }
     @objc private func checkForUpdatesTapped() { checkForUpdates(showResult: true) }
     @objc private func updateTapped() {
         guard let latestRelease else { return }
