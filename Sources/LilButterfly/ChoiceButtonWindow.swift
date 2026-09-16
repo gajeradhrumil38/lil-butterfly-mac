@@ -39,9 +39,17 @@ final class ChoiceButtonWindow: NSPanel {
     }
 
     private let onClick: () -> Void
+    private let dismissesOnClick: Bool
 
-    init(frame: NSRect, title: String, style: Style = .accentCapsule, onClick: @escaping () -> Void) {
+    init(
+        frame: NSRect,
+        title: String,
+        style: Style = .accentCapsule,
+        dismissesOnClick: Bool = true,
+        onClick: @escaping () -> Void
+    ) {
         self.onClick = onClick
+        self.dismissesOnClick = dismissesOnClick
         super.init(
             contentRect: frame,
             styleMask: [.borderless, .nonactivatingPanel],
@@ -84,6 +92,8 @@ final class ChoiceButtonWindow: NSPanel {
 
     @objc private func tapped() {
         onClick()
-        orderOut(nil)
+        if dismissesOnClick {
+            orderOut(nil)
+        }
     }
 }

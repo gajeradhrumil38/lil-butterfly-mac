@@ -5,7 +5,7 @@ import AppKit
 final class InteractiveCheckInTests: XCTestCase {
 
     func testMoodCheckInContainsEveryClickableChoice() {
-        let content = CheckInContent.random()
+        let content = CheckInContent.make(style: .moodPicker)
 
         XCTAssertEqual(content.style, .moodPicker)
         XCTAssertFalse(content.question.isEmpty)
@@ -19,7 +19,7 @@ final class InteractiveCheckInTests: XCTestCase {
     }
 
     func testBubbleCreatesOneDistinctClickableFramePerChoice() {
-        let content = CheckInContent.random()
+        let content = CheckInContent.make(style: .moodPicker)
         let bubble = BubbleView(message: content.question, choiceLabels: content.choices.map(\.label))
 
         let frames = content.choices.indices.map { bubble.choiceFrame(at: $0) }
@@ -36,12 +36,13 @@ final class InteractiveCheckInTests: XCTestCase {
     }
 
     func testChoiceButtonInvokesItsClickHandlerForEveryChoice() {
-        for label in CheckInContent.random().choices.map(\.label) {
+        for label in CheckInContent.make(style: .moodPicker).choices.map(\.label) {
             var clickedLabel: String?
             let window = ChoiceButtonWindow(
                 frame: NSRect(x: 0, y: 0, width: 80, height: 32),
                 title: label,
-                style: .plainChip
+                style: .plainChip,
+                dismissesOnClick: false
             ) {
                 clickedLabel = label
             }
@@ -52,6 +53,17 @@ final class InteractiveCheckInTests: XCTestCase {
             }
             button.performClick(nil)
             XCTAssertEqual(clickedLabel, label)
+            XCTAssertTrue(window.isVisible, "Selected choice (label) should remain visible while its reply is shown")
+        }
+    }
+
+    func testEveryTestableVariantHasClickableContent() {
+        for style in CheckInStyle.allCases {
+            let content = CheckInContent.make(style: style)
+            XCTAssertEqual(content.style, style)
+            XCTAssertFalse(content.question.isEmpty)
+            XCTAssertFalse(content.choices.isEmpty)
+            XCTAssertTrue(content.choices.allSatisfy { !$0.label.isEmpty && !$0.replies.isEmpty })
         }
     }
 }

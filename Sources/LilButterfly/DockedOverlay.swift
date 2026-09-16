@@ -241,7 +241,7 @@ final class DockedOverlay {
             bubble.fadeIn()
             if let checkIn {
                 choiceWindows = checkIn.choices.enumerated().map { index, choice in
-                    ChoiceButtonWindow(frame: choiceFrameOnScreen(index), title: choice.label, style: .plainChip) {
+                    ChoiceButtonWindow(frame: choiceFrameOnScreen(index), title: choice.label, style: .plainChip, dismissesOnClick: false) {
                         CheckInStore.record(style: checkIn.style.rawValue, choice: choice.label)
                         bubble.revealReply(choice.replies.randomElement() ?? choice.replies[0])
                         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
@@ -289,7 +289,7 @@ final class DockedOverlay {
                 bubble.fadeIn()
                 if let checkIn {
                     self.choiceWindows = checkIn.choices.enumerated().map { index, choice in
-                        ChoiceButtonWindow(frame: choiceFrameOnScreen(index), title: choice.label, style: .plainChip) {
+                        ChoiceButtonWindow(frame: choiceFrameOnScreen(index), title: choice.label, style: .plainChip, dismissesOnClick: false) {
                             CheckInStore.record(style: checkIn.style.rawValue, choice: choice.label)
                             bubble.revealReply(choice.replies.randomElement() ?? choice.replies[0])
                             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {

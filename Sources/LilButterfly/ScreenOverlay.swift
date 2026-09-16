@@ -170,7 +170,7 @@ final class ScreenOverlay {
                 // update button does — the reply is the whole point of a
                 // check-in, so it needs time to actually be read.
                 self.choiceWindows = checkIn.choices.enumerated().map { index, choice in
-                    ChoiceButtonWindow(frame: choiceFrameOnScreen(index), title: choice.label, style: .plainChip) {
+                    ChoiceButtonWindow(frame: choiceFrameOnScreen(index), title: choice.label, style: .plainChip, dismissesOnClick: false) {
                         CheckInStore.record(style: checkIn.style.rawValue, choice: choice.label)
                         bubble.revealReply(choice.replies.randomElement() ?? choice.replies[0])
                         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {

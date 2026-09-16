@@ -185,7 +185,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             addItem(to: menu, title: "Check for Updates…", action: #selector(checkForUpdatesTapped), symbol: "arrow.triangle.2.circlepath")
         }
         addItem(to: menu, title: "Show Butterfly", action: #selector(showNowTapped), symbol: "sparkles")
-        addItem(to: menu, title: "Test Interactive Check-In", action: #selector(testInteractiveCheckInTapped), symbol: "hand.tap")
+        let checkInTestMenu = NSMenu(title: "Test Interactive Check-In")
+        checkInTestMenu.minimumWidth = 240
+        addCheckInTestItem(to: checkInTestMenu, title: "Random Choice-Row Variant", style: nil)
+        checkInTestMenu.addItem(.separator())
+        for style in CheckInStyle.allCases {
+            addCheckInTestItem(to: checkInTestMenu, title: style.displayName, style: style)
+        }
+        let checkInTestItem = NSMenuItem(title: "Test Interactive Check-In", action: nil, keyEquivalent: "")
+        checkInTestItem.image = symbolImage("hand.tap")
+        checkInTestItem.submenu = checkInTestMenu
+        menu.addItem(checkInTestItem)
         addItem(
             to: menu,
             title: config.paused ? "Resume Visits" : "Pause Visits",
@@ -353,6 +363,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(item)
     }
 
+    private func addCheckInTestItem(to menu: NSMenu, title: String, style: CheckInStyle?) {
+        let item = NSMenuItem(title: title, action: #selector(testInteractiveCheckInTapped(_:)), keyEquivalent: "")
+        item.target = self
+        item.representedObject = style?.rawValue
+        item.image = symbolImage(style == nil ? "shuffle" : "hand.tap")
+        menu.addItem(item)
+    }
+
     private func addFrequencyItem(to menu: NSMenu, title: String, min: Int, max: Int) {
         let item = NSMenuItem(title: title, action: #selector(frequencyTapped(_:)), keyEquivalent: "")
         item.target = self
@@ -397,8 +415,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     /// Opens a check-in on demand so every choice can be exercised without
     /// waiting for the scheduled visit or the occasional-content chance.
-    @objc private func testInteractiveCheckInTapped() {
-        _ = fireVisit(manualOverride: true, forcedCheckIn: CheckInContent.random())
+    @objc private func testInteractiveCheckInTapped(_ sender: NSMenuItem) {
+        let style = (sender.representedObject as? String).flatMap(CheckInStyle.init(rawValue:))
+        _ = fireVisit(manualOverride: true, forcedCheckIn: style.map(CheckInContent.make) ?? CheckInContent.random())
     }
     @objc private func checkForUpdatesTapped() { checkForUpdates(showResult: true) }
     @objc private func updateTapped() {
