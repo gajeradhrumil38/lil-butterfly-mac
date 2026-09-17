@@ -185,4 +185,9 @@ private final class EnergyTrackView: NSView {
         animateThumb(pressed: false)
         onCommit?(fraction)
     }
+
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        addCursorRect(bounds, cursor: .pointingHand)
+    }
 }

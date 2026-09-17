@@ -568,14 +568,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     if let menu = self.statusItem?.menu { self.rebuildMenu(menu) }
                     if showResult {
                         if let release {
-                            let alert = NSAlert()
-                            alert.messageText = "A new Butterfly is ready"
-                            alert.informativeText = "Version \(release.version) is available."
-                            alert.addButton(withTitle: "Update Now")
-                            alert.addButton(withTitle: "Later")
-                            if alert.runModal() == .alertFirstButtonReturn {
-                                self.startSelfUpdate(release: release)
-                            }
+                            self.presentBubbleNotice(
+                                message: "A new Butterfly (v\(release.version)) is ready.",
+                                actionTitle: "Update Now"
+                            ) { [weak self] in self?.startSelfUpdate(release: release) }
                         } else {
                             self.showUpdateMessage("Butterfly is up to date.")
                         }
@@ -590,10 +586,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func showUpdateMessage(_ message: String) {
-        let alert = NSAlert()
-        alert.messageText = message
-        alert.addButton(withTitle: "OK")
-        alert.runModal()
+        presentBubbleNotice(message: message)
+    }
+
+    /// The one place any of this app's own status notices (update
+    /// available, up to date, update failed) actually reach the screen —
+    /// via the same click-through-safe bubble every ordinary visit uses,
+    /// never NSAlert. An accessory (LSUIElement) app like this one has no
+    /// reliable way to bring a real NSAlert's window to the front:
+    /// NSApp.activate is refused unless the current frontmost app yields,
+    /// which nothing does for an accessory app, so the alert could show up
+    /// not-key/not-frontmost — a click meant to dismiss it then lands on
+    /// whatever app actually was frontmost instead, which is exactly the
+    /// "click outside the message does something wrong" bug this removes.
+    private func presentBubbleNotice(message: String, actionTitle: String? = nil, onTapped: (() -> Void)? = nil) {
+        let displayWidth = ButterflySize.width(forIndex: config.butterflySizeIndex)
+        let restingSeconds = max(config.restingSeconds, 14)
+        if config.mode == "docked" {
+            dockedOverlay?.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: restingSeconds, actionTitle: actionTitle, onTapped: onTapped)
+        } else if let overlay = overlays.filter({ $0.isAvailable }).randomElement() {
+            overlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: restingSeconds, actionTitle: actionTitle, onTapped: onTapped)
+        }
     }
 
     @objc private func togglePauseTapped() {
