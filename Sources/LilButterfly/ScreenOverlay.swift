@@ -3,7 +3,18 @@ import AppKit
 enum ScreenEdge: String, CaseIterable {
     case left, right, top, bottom
 
-    func restPoint(in screenFrame: CGRect, margin: CGFloat) -> CGPoint {
+    /// `topSafeInset` is `NSScreen.safeAreaInsets.top` — 0 on every Mac
+    /// without a camera notch, and the notch's own depth on the models
+    /// that have one. The overlay window is sized to the screen's full
+    /// `frame` (so it can still reach right up to a non-notched screen's
+    /// physical top edge), which means nothing stops a `.top` rest point
+    /// from landing in the notch's cutout on the machines that have one —
+    /// pixels drawn there simply aren't visible, so the message/butterfly
+    /// silently loses however much of itself overlapped it. Folding this
+    /// into the margin keeps every model's normal behavior (0 inset does
+    /// nothing) while guaranteeing the notch is always cleared on the ones
+    /// that need it.
+    func restPoint(in screenFrame: CGRect, margin: CGFloat, topSafeInset: CGFloat = 0) -> CGPoint {
         let w = screenFrame.width
         let h = screenFrame.height
         switch self {
@@ -12,7 +23,7 @@ enum ScreenEdge: String, CaseIterable {
         case .right:
             return CGPoint(x: w - margin - CGFloat.random(in: 0...40), y: h * CGFloat.random(in: 0.2...0.8))
         case .top:
-            return CGPoint(x: w * CGFloat.random(in: 0.2...0.8), y: h - margin - CGFloat.random(in: 0...30))
+            return CGPoint(x: w * CGFloat.random(in: 0.2...0.8), y: h - margin - topSafeInset - CGFloat.random(in: 0...30))
         case .bottom:
             return CGPoint(x: w * CGFloat.random(in: 0.2...0.8), y: margin + CGFloat.random(in: 0...30))
         }
@@ -37,6 +48,7 @@ final class ScreenOverlay {
 
     private let window: OverlayWindow
     private let screenFrame: CGRect
+    private let topSafeInset: CGFloat
     private var isBusy = false
     private var closeWindow: BubbleCloseWindow?
     // NSPanel rather than ChoiceButtonWindow: the energy slider's single
@@ -48,6 +60,7 @@ final class ScreenOverlay {
     init(screen: NSScreen) {
         self.window = OverlayWindow(screen: screen)
         self.screenFrame = CGRect(origin: .zero, size: screen.frame.size)
+        self.topSafeInset = screen.safeAreaInsets.top
     }
 
     var isAvailable: Bool { !isBusy }
@@ -79,7 +92,7 @@ final class ScreenOverlay {
 
         let edge = ScreenEdge.allCases.randomElement()!
         let margin: CGFloat = 60
-        let rest = edge.restPoint(in: screenFrame, margin: margin)
+        let rest = edge.restPoint(in: screenFrame, margin: margin, topSafeInset: topSafeInset)
         let off = edge.offscreenPoint(in: screenFrame, restX: rest.x, restY: rest.y, margin: margin)
 
         let butterfly = ButterflyView(center: off, pinnedAssetIndex: pinnedAssetIndex, displayWidth: displayWidth)

@@ -52,9 +52,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         dockedOverlay = nil
         if config.mode == "docked" {
             if let main = preferredScreen {
+                // Configs saved before top/bottom docking was removed can
+                // still have one of those on disk — fall back to right
+                // rather than letting a stale value dock somewhere the
+                // menu no longer offers.
+                var edge = ScreenEdge(rawValue: config.dockEdge) ?? .right
+                if edge != .left && edge != .right {
+                    edge = .right
+                    config.dockEdge = edge.rawValue
+                    ConfigStore.save(config)
+                }
                 let docked = DockedOverlay(
                     screen: main,
-                    edge: ScreenEdge(rawValue: config.dockEdge) ?? .right,
+                    edge: edge,
                     positionFraction: config.dockPositionFraction
                 )
                 docked.onPositionChanged = { [weak self] fraction in
@@ -226,7 +236,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         addModeItem(to: movementMenu, title: "Dock", mode: "docked", symbol: "pin.fill")
         movementMenu.addItem(.separator())
         let edgeMenu = NSMenu()
-        for edge in ScreenEdge.allCases {
+        // Docking to the top or bottom edge is what put the parked
+        // butterfly and its message right where a MacBook's camera housing
+        // (or the menu bar, on non-notched Macs) sits — left/right are the
+        // only edges that never compete with either, so those are the only
+        // ones offered here now. Roaming visits still use all 4 edges;
+        // OverlayWindow avoids the notch itself for those (see
+        // ScreenEdge.restPoint's topSafeInset).
+        for edge in [ScreenEdge.left, .right] {
             let item = NSMenuItem(title: edge.rawValue.capitalized, action: #selector(dockEdgeTapped(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = edge.rawValue
