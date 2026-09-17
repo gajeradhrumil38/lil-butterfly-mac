@@ -74,6 +74,14 @@ final class ChoiceButtonWindow: NSPanel {
     private let feedback: Feedback
     private weak var button: NSButton?
 
+    /// Extra space kept around the button's visual (resting) frame inside
+    /// this window — without it, a selected chip's scale-up feedback has
+    /// nowhere to expand into and its edge gets hard-clipped by the
+    /// window's own bounds the moment it's near the card's edge (pixels
+    /// transformed past a window's frame simply aren't drawn, regardless
+    /// of any layer's masksToBounds setting).
+    private static let headroom: CGFloat = 5
+
     init(
         frame: NSRect,
         title: String,
@@ -86,7 +94,7 @@ final class ChoiceButtonWindow: NSPanel {
         self.dismissesOnClick = dismissesOnClick
         self.feedback = feedback
         super.init(
-            contentRect: frame,
+            contentRect: frame.insetBy(dx: -Self.headroom, dy: -Self.headroom),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -103,7 +111,7 @@ final class ChoiceButtonWindow: NSPanel {
             .fullScreenAuxiliary,
         ]
 
-        let button = NSButton(frame: NSRect(origin: .zero, size: frame.size))
+        let button = NSButton(frame: NSRect(x: Self.headroom, y: Self.headroom, width: frame.width, height: frame.height))
         button.title = title
         button.isBordered = false
         button.attributedTitle = NSAttributedString(
@@ -122,11 +130,10 @@ final class ChoiceButtonWindow: NSPanel {
         button.wantsLayer = true
         button.layer?.cornerRadius = style.cornerRadius
         button.layer?.backgroundColor = style.hasBackground ? style.backgroundColor.cgColor : nil
-        button.autoresizingMask = [.width, .height]
         button.target = self
         button.action = #selector(tapped)
         self.button = button
-        contentView = NSView(frame: NSRect(origin: .zero, size: frame.size))
+        contentView = NSView(frame: NSRect(origin: .zero, size: frame.insetBy(dx: -Self.headroom, dy: -Self.headroom).size))
         contentView?.addSubview(button)
 
         orderFrontRegardless()
@@ -134,6 +141,15 @@ final class ChoiceButtonWindow: NSPanel {
 
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
+
+    /// Repositioning (as the bubble moves) always targets the visual
+    /// resting frame — keep applying the same headroom expansion so the
+    /// button's on-screen position stays correct and the scale headroom
+    /// survives every reposition, not just the initial placement.
+    override func setFrame(_ frameRect: NSRect, display flag: Bool) {
+        super.setFrame(frameRect.insetBy(dx: -Self.headroom, dy: -Self.headroom), display: flag)
+        button?.frame = NSRect(x: Self.headroom, y: Self.headroom, width: frameRect.width, height: frameRect.height)
+    }
 
     @objc private func tapped() {
         animateFeedback()
