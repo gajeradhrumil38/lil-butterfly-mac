@@ -89,6 +89,7 @@ private final class EnergyTrackView: NSView {
 
     private let thumbDiameter: CGFloat = 18
     private let trackHeight: CGFloat = 8
+    private var trackingArea: NSTrackingArea?
 
     init(frame: NSRect, initialFraction: Double) {
         self.fraction = initialFraction
@@ -186,8 +187,18 @@ private final class EnergyTrackView: NSView {
         onCommit?(fraction)
     }
 
-    override func resetCursorRects() {
-        super.resetCursorRects()
-        addCursorRect(bounds, cursor: .pointingHand)
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let trackingArea { removeTrackingArea(trackingArea) }
+        let area = NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeAlways], owner: self, userInfo: nil)
+        addTrackingArea(area)
+        trackingArea = area
     }
+
+    // .set() rather than resetCursorRects/addCursorRect — cursor *rects*
+    // only actually take effect while a window is key, and this panel (like
+    // every other interactive window in this app) deliberately never
+    // becomes key, so that mechanism silently did nothing here.
+    override func mouseEntered(with event: NSEvent) { NSCursor.pointingHand.set() }
+    override func mouseExited(with event: NSEvent) { NSCursor.arrow.set() }
 }

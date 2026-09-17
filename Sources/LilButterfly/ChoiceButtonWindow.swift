@@ -252,11 +252,20 @@ private final class HoverButton: NSButton {
         trackingArea = area
     }
 
-    override func mouseEntered(with event: NSEvent) { onHoverChange?(true) }
-    override func mouseExited(with event: NSEvent) { onHoverChange?(false) }
+    // .set() rather than resetCursorRects/addCursorRect — cursor *rects*
+    // only actually take effect while a window is key, and every window
+    // in this app deliberately never becomes key (canBecomeKey is always
+    // false, so as never to steal focus), so that mechanism silently does
+    // nothing here. .set() has no such requirement, and has no stack to
+    // leave unbalanced if this window disappears mid-hover the way
+    // .push()/.pop() would.
+    override func mouseEntered(with event: NSEvent) {
+        onHoverChange?(true)
+        NSCursor.pointingHand.set()
+    }
 
-    override func resetCursorRects() {
-        super.resetCursorRects()
-        addCursorRect(bounds, cursor: .pointingHand)
+    override func mouseExited(with event: NSEvent) {
+        onHoverChange?(false)
+        NSCursor.arrow.set()
     }
 }

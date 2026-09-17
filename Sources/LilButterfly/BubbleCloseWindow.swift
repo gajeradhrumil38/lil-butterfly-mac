@@ -6,10 +6,10 @@ import AppKit
 /// The clickable area (`frame`, from BubbleView.closeTargetFrame) is
 /// deliberately bigger than the visible × glyph — a precise 20x20 corner
 /// target was reported hard to actually land a click on. The button fills
-/// this whole bigger area invisibly; a separate, non-interactive image view
-/// draws the actual × mark pinned to its original small size and position,
-/// so the visible design doesn't change at all, only how forgiving it is
-/// to click.
+/// this whole bigger area invisibly; a separate, purely decorative image
+/// view draws the actual × mark pinned to its original small size and
+/// position, so the visible design doesn't change at all, only how
+/// forgiving it is to click.
 final class BubbleCloseWindow: NSPanel {
 
     private let onClick: () -> Void
@@ -49,9 +49,13 @@ final class BubbleCloseWindow: NSPanel {
 
         // Pinned to the frame's own top-right corner at its original fixed
         // size — however much bigger `frame` (the hit area) is than this,
-        // the visible mark itself never moves or grows.
+        // the visible mark itself never moves or grows. ClickThroughImageView
+        // opts out of hit-testing: a plain NSImageView sitting on top of the
+        // button would otherwise silently swallow every click that landed
+        // exactly on the visible × (precisely where anyone would naturally
+        // aim) before it ever reached the button underneath.
         let visibleSize: CGFloat = 20
-        let icon = NSImageView(frame: NSRect(
+        let icon = ClickThroughImageView(frame: NSRect(
             x: frame.width - visibleSize, y: frame.height - visibleSize,
             width: visibleSize, height: visibleSize
         ))
@@ -101,14 +105,40 @@ final class BubbleCloseWindow: NSPanel {
     }
 }
 
-/// Shows a pointing-hand cursor across its whole (enlarged) clickable
-/// area — the standard AppKit way (resetCursorRects, invoked automatically
-/// whenever this view's tracking rects need updating) to signal "this is
-/// clickable" for a control that otherwise gives no hint it's interactive
-/// against the borderless overlay behind it.
+/// A pointing-hand cursor while hovering, via NSTrackingArea rather than
+/// resetCursorRects — cursor *rects* are only actually honored while a
+/// window is key, and this panel (like every other interactive window in
+/// this app) deliberately overrides canBecomeKey to false so it never
+/// steals focus. NSTrackingArea's mouseEntered/mouseExited fire regardless
+/// of key status, which is why ChoiceButtonWindow's HoverButton already
+/// uses the same approach for its own hover feedback.
 private final class CloseMarkButton: NSButton {
-    override func resetCursorRects() {
-        super.resetCursorRects()
-        addCursorRect(bounds, cursor: .pointingHand)
+    private var trackingArea: NSTrackingArea?
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let trackingArea { removeTrackingArea(trackingArea) }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeAlways],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(area)
+        trackingArea = area
     }
+
+    // .set() rather than .push()/.pop() — this window can disappear (the
+    // card fading out) while the mouse is still technically inside it,
+    // which would never fire mouseExited to balance a push, leaving the
+    // hand cursor stuck. .set() has no stack to unbalance; the next view
+    // the mouse moves over sets its own cursor regardless.
+    override func mouseEntered(with event: NSEvent) { NSCursor.pointingHand.set() }
+    override func mouseExited(with event: NSEvent) { NSCursor.arrow.set() }
+}
+
+/// A decorative-only image view — always reports "nothing here" to
+/// hit-testing so clicks pass straight through to whatever sits behind it.
+private final class ClickThroughImageView: NSImageView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
