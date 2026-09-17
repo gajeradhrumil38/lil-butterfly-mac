@@ -190,7 +190,7 @@ private final class EnergyTrackView: NSView {
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         if let trackingArea { removeTrackingArea(trackingArea) }
-        let area = NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeAlways], owner: self, userInfo: nil)
+        let area = NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .mouseMoved, .activeAlways], owner: self, userInfo: nil)
         addTrackingArea(area)
         trackingArea = area
     }
@@ -198,7 +198,11 @@ private final class EnergyTrackView: NSView {
     // .set() rather than resetCursorRects/addCursorRect — cursor *rects*
     // only actually take effect while a window is key, and this panel (like
     // every other interactive window in this app) deliberately never
-    // becomes key, so that mechanism silently did nothing here.
+    // becomes key, so that mechanism silently did nothing here. Reasserted
+    // on every mouseMoved too — a single .set() on entry can get silently
+    // reset by unrelated Core Animation activity nearby (a documented
+    // AppKit quirk), which read as the hand cursor working only sometimes.
     override func mouseEntered(with event: NSEvent) { NSCursor.pointingHand.set() }
+    override func mouseMoved(with event: NSEvent) { NSCursor.pointingHand.set() }
     override func mouseExited(with event: NSEvent) { NSCursor.arrow.set() }
 }

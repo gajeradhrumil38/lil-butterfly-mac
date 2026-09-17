@@ -120,7 +120,7 @@ private final class CloseMarkButton: NSButton {
         if let trackingArea { removeTrackingArea(trackingArea) }
         let area = NSTrackingArea(
             rect: bounds,
-            options: [.mouseEnteredAndExited, .activeAlways],
+            options: [.mouseEnteredAndExited, .mouseMoved, .activeAlways],
             owner: self,
             userInfo: nil
         )
@@ -133,7 +133,17 @@ private final class CloseMarkButton: NSButton {
     // which would never fire mouseExited to balance a push, leaving the
     // hand cursor stuck. .set() has no stack to unbalance; the next view
     // the mouse moves over sets its own cursor regardless.
+    //
+    // Re-asserted on every mouseMoved too, not just once on entry — a
+    // single .set() at "entered" can get silently reset by unrelated
+    // Core Animation activity nearby (a documented AppKit quirk: an
+    // animation elsewhere can make the system re-evaluate and stomp a
+    // manually-set cursor), which read as the hand cursor working only
+    // sometimes. .mouseMoved on the tracking area fires regardless of the
+    // window's acceptsMouseMovedEvents setting, so this needs no other
+    // change to get continuous reassertion while actually hovering.
     override func mouseEntered(with event: NSEvent) { NSCursor.pointingHand.set() }
+    override func mouseMoved(with event: NSEvent) { NSCursor.pointingHand.set() }
     override func mouseExited(with event: NSEvent) { NSCursor.arrow.set() }
 }
 

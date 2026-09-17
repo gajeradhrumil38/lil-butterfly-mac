@@ -244,7 +244,7 @@ private final class HoverButton: NSButton {
         if let trackingArea { removeTrackingArea(trackingArea) }
         let area = NSTrackingArea(
             rect: bounds,
-            options: [.mouseEnteredAndExited, .activeAlways],
+            options: [.mouseEnteredAndExited, .mouseMoved, .activeAlways],
             owner: self,
             userInfo: nil
         )
@@ -259,10 +259,17 @@ private final class HoverButton: NSButton {
     // nothing here. .set() has no such requirement, and has no stack to
     // leave unbalanced if this window disappears mid-hover the way
     // .push()/.pop() would.
+    //
+    // Re-asserted on every mouseMoved too — a single .set() on entry can
+    // get silently reset by unrelated Core Animation activity nearby (a
+    // documented AppKit quirk), which read as the hand cursor working
+    // only sometimes.
     override func mouseEntered(with event: NSEvent) {
         onHoverChange?(true)
         NSCursor.pointingHand.set()
     }
+
+    override func mouseMoved(with event: NSEvent) { NSCursor.pointingHand.set() }
 
     override func mouseExited(with event: NSEvent) {
         onHoverChange?(false)
