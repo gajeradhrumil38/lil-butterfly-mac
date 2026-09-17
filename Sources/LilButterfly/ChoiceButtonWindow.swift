@@ -43,12 +43,15 @@ final class ChoiceButtonWindow: NSPanel {
             hasBackground: false
         )
 
+        /// A real filled pill, matching the brainstorming mockups' chip
+        /// look — not just floating text. `.clear`/`hasBackground: false`
+        /// (the previous version) rendered no visible chip boundary at all.
         static let textChip = Style(
-            backgroundColor: .clear,
+            backgroundColor: NSColor(calibratedWhite: 0.227, alpha: 1),
             textColor: .white,
             font: NSFont.systemFont(ofSize: 12.5, weight: .medium),
             cornerRadius: 10,
-            hasBackground: false
+            hasBackground: true
         )
     }
 
@@ -107,6 +110,15 @@ final class ChoiceButtonWindow: NSPanel {
             string: title,
             attributes: [.font: style.font, .foregroundColor: style.textColor]
         )
+        // Without this, NSButtonCell wraps a title too long for one line
+        // onto a second line instead of truncating it — and since these
+        // buttons are only ~32pt tall, that second line just gets clipped
+        // off, showing "A good conversation" as "A" or "Something I
+        // finished" as "So". Single-line + tail-truncation keeps whatever
+        // fits on one line, with an ellipsis if it's ever cut short,
+        // instead of silently dropping the rest of the word.
+        button.cell?.usesSingleLineMode = true
+        button.cell?.lineBreakMode = .byTruncatingTail
         button.wantsLayer = true
         button.layer?.cornerRadius = style.cornerRadius
         button.layer?.backgroundColor = style.hasBackground ? style.backgroundColor.cgColor : nil
