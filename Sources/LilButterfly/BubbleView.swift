@@ -20,22 +20,24 @@ final class BubbleView: NSView {
     /// overshot the card's top edge by 1pt and sat almost flush with the
     /// right edge, reading as misaligned against the card's rounded corner).
     /// A precise 20x20 corner target was reported hard to actually land a
-    /// click on. The visible × mark stays exactly that size and in exactly
-    /// this spot (BubbleCloseWindow pins its icon here, unchanged) — only
-    /// the invisible clickable area grows, extending down and left (the
-    /// direction a click approaching from inside the card naturally comes
-    /// from) so there's real room for error without moving or enlarging
-    /// anything the user actually sees.
+    /// click on — still true even after one round of down-left-only
+    /// padding, per repeated testing. The visible × mark stays exactly
+    /// that size (BubbleCloseWindow always centers it within whatever
+    /// frame it's given) — only the invisible clickable area grows, now
+    /// symmetrically in every direction, including past the card's own
+    /// edge into the transparent overlay beyond it (harmless: nothing
+    /// else is there to compete for that space, and it only makes the
+    /// target more forgiving for a click that overshoots the corner).
     var closeTargetFrame: CGRect {
         let visibleSize: CGFloat = 20
         let margin: CGFloat = 6
-        let hitPadding: CGFloat = 10
+        let hitPadding: CGFloat = 16
         let visibleOrigin = CGPoint(x: frame.width - margin - visibleSize, y: frame.height - margin - visibleSize)
         return CGRect(
             x: visibleOrigin.x - hitPadding,
             y: visibleOrigin.y - hitPadding,
-            width: visibleSize + hitPadding,
-            height: visibleSize + hitPadding
+            width: visibleSize + hitPadding * 2,
+            height: visibleSize + hitPadding * 2
         )
     }
 

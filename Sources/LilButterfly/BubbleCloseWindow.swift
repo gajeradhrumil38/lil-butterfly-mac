@@ -47,16 +47,18 @@ final class BubbleCloseWindow: NSPanel {
         button.action = #selector(closeTapped)
         contentView.addSubview(button)
 
-        // Pinned to the frame's own top-right corner at its original fixed
-        // size — however much bigger `frame` (the hit area) is than this,
-        // the visible mark itself never moves or grows. ClickThroughImageView
-        // opts out of hit-testing: a plain NSImageView sitting on top of the
+        // Centered within whatever size `frame` (the hit area) actually is
+        // — BubbleView.closeTargetFrame pads symmetrically around the
+        // glyph's original spot, so centering here keeps the visible mark
+        // exactly where it's always been regardless of how much bigger the
+        // surrounding invisible hit area grows. ClickThroughImageView opts
+        // out of hit-testing: a plain NSImageView sitting on top of the
         // button would otherwise silently swallow every click that landed
         // exactly on the visible × (precisely where anyone would naturally
         // aim) before it ever reached the button underneath.
         let visibleSize: CGFloat = 20
         let icon = ClickThroughImageView(frame: NSRect(
-            x: frame.width - visibleSize, y: frame.height - visibleSize,
+            x: (frame.width - visibleSize) / 2, y: (frame.height - visibleSize) / 2,
             width: visibleSize, height: visibleSize
         ))
         let symbolConfig = NSImage.SymbolConfiguration(pointSize: 10, weight: .semibold)
