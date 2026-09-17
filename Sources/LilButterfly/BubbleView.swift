@@ -138,9 +138,15 @@ final class BubbleView: NSView {
     private static func makeChoiceFrames(labels: [String], width: CGFloat, style: CheckInStyle?) -> [CGRect] {
         guard !labels.isEmpty else { return [] }
         let padding: CGFloat = 14
-        let spacing: CGFloat = 6
-        let contentWidth = width - padding * 2
         let isChipLayout = style == .smilePrompt || style == .gratitudeTap || style == .pickAWord
+        // Chips get extra breathing room between them (vs. the equal-slot
+        // emoji/heart row) because a tapped chip scales up in place — too
+        // tight a gap and a selected chip's growth edge runs straight into
+        // its neighbor's own window, which is what read as "cut off" when
+        // multiple chips sat close together. See ChoiceButtonWindow's
+        // per-button headroom for the matching fix on the other axis.
+        let spacing: CGFloat = isChipLayout ? 10 : 6
+        let contentWidth = width - padding * 2
         guard isChipLayout else {
             let slotWidth = (contentWidth - spacing * CGFloat(labels.count - 1)) / CGFloat(labels.count)
             return labels.indices.map { index in
