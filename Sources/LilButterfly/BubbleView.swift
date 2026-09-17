@@ -19,10 +19,24 @@ final class BubbleView: NSView {
     /// card's top-right corner (rather than the previous frame, which
     /// overshot the card's top edge by 1pt and sat almost flush with the
     /// right edge, reading as misaligned against the card's rounded corner).
+    /// A precise 20x20 corner target was reported hard to actually land a
+    /// click on. The visible × mark stays exactly that size and in exactly
+    /// this spot (BubbleCloseWindow pins its icon here, unchanged) — only
+    /// the invisible clickable area grows, extending down and left (the
+    /// direction a click approaching from inside the card naturally comes
+    /// from) so there's real room for error without moving or enlarging
+    /// anything the user actually sees.
     var closeTargetFrame: CGRect {
-        let size: CGFloat = 20
+        let visibleSize: CGFloat = 20
         let margin: CGFloat = 6
-        return CGRect(x: frame.width - margin - size, y: frame.height - margin - size, width: size, height: size)
+        let hitPadding: CGFloat = 10
+        let visibleOrigin = CGPoint(x: frame.width - margin - visibleSize, y: frame.height - margin - visibleSize)
+        return CGRect(
+            x: visibleOrigin.x - hitPadding,
+            y: visibleOrigin.y - hitPadding,
+            width: visibleSize + hitPadding,
+            height: visibleSize + hitPadding
+        )
     }
 
     private static let choiceRowHeight: CGFloat = 32
