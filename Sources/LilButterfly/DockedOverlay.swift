@@ -189,10 +189,9 @@ final class DockedOverlay {
         if let actionTitle {
             choiceLabels = [actionTitle]
         } else if let checkIn {
-            // The slider reserves one full-width strip, not one slot per
-            // stage — its 5 stages are what the live emoji/message morphs
-            // through as it's dragged, not 5 separate tap targets.
-            choiceLabels = checkIn.style == .energySlider ? [""] : checkIn.choices.map { $0.label }
+            // The slider and the zero-tap styles all reserve one
+            // full-width strip rather than one slot per choice.
+            choiceLabels = checkIn.style.needsSingleReservedStrip ? [""] : checkIn.choices.map { $0.label }
         } else {
             choiceLabels = []
         }
@@ -257,6 +256,18 @@ final class DockedOverlay {
                     }
                 }
                 choiceWindows = [slider]
+            } else if let checkIn, checkIn.style == .breatheWithMe {
+                butterfly.setFlutterRate(0.35)
+                bubble.startBreathing {
+                    butterfly.setFlutterRate(1.0)
+                    bubble.setLiveText(CheckInContent.randomBreathingClosingLine())
+                }
+            } else if let checkIn, checkIn.style == .eyeRestReset {
+                bubble.startCountdownRing(seconds: 20) { remaining in
+                    bubble.setLiveText("Look away… \(remaining)")
+                } completion: {
+                    bubble.setLiveText(CheckInContent.randomEyeRestClosingLine())
+                }
             } else if let checkIn {
                 choiceWindows = checkIn.choices.enumerated().map { index, choice in
                     ChoiceButtonWindow(frame: choiceFrameOnScreen(index), title: choice.label, style: ChoiceButtonWindow.style(for: checkIn.style), dismissesOnClick: false, feedback: ChoiceButtonWindow.feedback(for: checkIn.style)) {
@@ -282,6 +293,7 @@ final class DockedOverlay {
                 guard !didLeave, self.visitID == currentVisitID else { return }
                 didLeave = true
                 butterfly.stopHover()
+                butterfly.setFlutterRate(1.0)
                 self.closeWindow?.fadeOutAndOrderOut(duration: BubbleView.fadeOutDuration)
                 self.choiceWindows.forEach { $0.fadeOutAndOrderOut(duration: BubbleView.fadeOutDuration) }
                 bubble.fadeOut {
@@ -316,6 +328,18 @@ final class DockedOverlay {
                         }
                     }
                     self.choiceWindows = [slider]
+                } else if let checkIn, checkIn.style == .breatheWithMe {
+                    butterfly.setFlutterRate(0.35)
+                    bubble.startBreathing {
+                        butterfly.setFlutterRate(1.0)
+                        bubble.setLiveText(CheckInContent.randomBreathingClosingLine())
+                    }
+                } else if let checkIn, checkIn.style == .eyeRestReset {
+                    bubble.startCountdownRing(seconds: 20) { remaining in
+                        bubble.setLiveText("Look away… \(remaining)")
+                    } completion: {
+                        bubble.setLiveText(CheckInContent.randomEyeRestClosingLine())
+                    }
                 } else if let checkIn {
                     self.choiceWindows = checkIn.choices.enumerated().map { index, choice in
                         ChoiceButtonWindow(frame: choiceFrameOnScreen(index), title: choice.label, style: ChoiceButtonWindow.style(for: checkIn.style), dismissesOnClick: false, feedback: ChoiceButtonWindow.feedback(for: checkIn.style)) {
@@ -341,6 +365,7 @@ final class DockedOverlay {
                     guard !didLeave, self.visitID == currentVisitID else { return }
                     didLeave = true
                     butterfly.stopHover()
+                    butterfly.setFlutterRate(1.0)
                     self.closeWindow?.fadeOutAndOrderOut(duration: BubbleView.fadeOutDuration)
                     self.choiceWindows.forEach { $0.fadeOutAndOrderOut(duration: BubbleView.fadeOutDuration) }
                     bubble.fadeOut {

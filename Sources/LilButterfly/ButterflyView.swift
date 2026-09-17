@@ -134,6 +134,23 @@ final class ButterflyView: NSView {
         rightWing.add(flutterDelayed, forKey: "flutter")
     }
 
+    /// Temporarily slows (rate < 1) or restores (rate = 1) the wing-flutter
+    /// without restarting or jumping it — used by the Breathe-with-me
+    /// check-in so the butterfly's own motion visibly settles in time with
+    /// the breathing prompt, then speeds back up once it's done. Changing
+    /// a layer's `speed` alone would jump the animation's phase at the
+    /// moment of the change; capturing its current local time into
+    /// `timeOffset` first (the standard CALayer pause/resume recipe,
+    /// generalized to any rate rather than just 0) keeps it continuous.
+    func setFlutterRate(_ rate: CGFloat) {
+        for wing in [leftWing, rightWing] {
+            let pausedTime = wing.convertTime(CACurrentMediaTime(), from: nil)
+            wing.speed = Float(rate)
+            wing.timeOffset = pausedTime
+            wing.beginTime = CACurrentMediaTime()
+        }
+    }
+
     /// A small continuous hovering orbit while parked next to a message, so
     /// it reads as steadily still-flying in place rather than freezing —
     /// more like a real insect holding position than a subtle idle wobble.

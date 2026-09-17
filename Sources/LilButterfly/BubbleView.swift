@@ -234,6 +234,91 @@ final class BubbleView: NSView {
         label.alphaValue = 1
     }
 
+    /// Zero-tap breathing guide: a small circle grows once (breathe in),
+    /// then shrinks back (breathe out), animating its own `frame` rather
+    /// than a layer transform — an NSView's frame can be driven straight
+    /// through NSAnimationContext without the anchor-point correction
+    /// fadeOut needs, since AppKit recomputes the centered position from
+    /// the frame at every step instead of scaling around a fixed anchor.
+    func startBreathing(completion: @escaping () -> Void) {
+        let restDiameter: CGFloat = 14
+        let maxDiameter: CGFloat = 40
+        let strip = choiceFrame(at: 0)
+        let center = CGPoint(x: strip.midX, y: strip.midY)
+        func frame(for diameter: CGFloat) -> CGRect {
+            CGRect(x: center.x - diameter / 2, y: center.y - diameter / 2, width: diameter, height: diameter)
+        }
+        let circle = NSView(frame: frame(for: restDiameter))
+        circle.wantsLayer = true
+        circle.layer?.backgroundColor = NSColor.systemTeal.withAlphaComponent(0.85).cgColor
+        circle.layer?.cornerRadius = restDiameter / 2
+        addSubview(circle)
+
+        setLiveText("Breathe in...")
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = 5
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            circle.animator().frame = frame(for: maxDiameter)
+            circle.layer?.cornerRadius = maxDiameter / 2
+        }, completionHandler: { [weak self] in
+            guard let self else { return }
+            self.setLiveText("breathe out...")
+            NSAnimationContext.runAnimationGroup({ ctx in
+                ctx.duration = 5
+                ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                circle.animator().frame = frame(for: restDiameter)
+                circle.layer?.cornerRadius = restDiameter / 2
+            }, completionHandler: {
+                circle.removeFromSuperview()
+                completion()
+            })
+        })
+    }
+
+    /// Zero-tap 20-20-20 pacing: a ring that visibly depletes over
+    /// `seconds`, with a per-second callback so the caller can show the
+    /// count ticking down — states the well-known rule and actually paces
+    /// it, instead of just naming it and leaving the user to self-time it.
+    func startCountdownRing(seconds: Int, onSecondTick: @escaping (Int) -> Void, completion: @escaping () -> Void) {
+        let diameter: CGFloat = 28
+        let strip = choiceFrame(at: 0)
+        let center = CGPoint(x: strip.midX, y: strip.midY)
+        let rect = CGRect(x: center.x - diameter / 2, y: center.y - diameter / 2, width: diameter, height: diameter)
+
+        let ring = CAShapeLayer()
+        ring.frame = rect
+        ring.path = CGPath(ellipseIn: CGRect(origin: .zero, size: rect.size).insetBy(dx: 2, dy: 2), transform: nil)
+        ring.fillColor = NSColor.clear.cgColor
+        ring.strokeColor = NSColor.systemTeal.cgColor
+        ring.lineWidth = 3
+        ring.lineCap = .round
+        ring.strokeEnd = 1
+        layer?.addSublayer(ring)
+
+        let anim = CABasicAnimation(keyPath: "strokeEnd")
+        anim.fromValue = 1
+        anim.toValue = 0
+        anim.duration = Double(seconds)
+        anim.timingFunction = CAMediaTimingFunction(name: .linear)
+        anim.fillMode = .forwards
+        anim.isRemovedOnCompletion = false
+        ring.add(anim, forKey: "countdown")
+
+        var remaining = seconds
+        onSecondTick(remaining)
+        let timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { timer in
+            remaining -= 1
+            if remaining <= 0 {
+                timer.invalidate()
+                ring.removeFromSuperlayer()
+                completion()
+            } else {
+                onSecondTick(remaining)
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+    }
+
     func fadeIn() {
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.5

@@ -89,10 +89,9 @@ final class ScreenOverlay {
         if let actionTitle {
             choiceLabels = [actionTitle]
         } else if let checkIn {
-            // The slider reserves one full-width strip, not one slot per
-            // stage — its 5 stages are what the live emoji/message morphs
-            // through as it's dragged, not 5 separate tap targets.
-            choiceLabels = checkIn.style == .energySlider ? [""] : checkIn.choices.map { $0.label }
+            // The slider and the zero-tap styles all reserve one
+            // full-width strip rather than one slot per choice.
+            choiceLabels = checkIn.style.needsSingleReservedStrip ? [""] : checkIn.choices.map { $0.label }
         } else {
             choiceLabels = []
         }
@@ -139,6 +138,10 @@ final class ScreenOverlay {
             guard !didLeave else { return }
             didLeave = true
             butterfly.stopHover()
+            // Idempotent safety net: if the breathing style is closed
+            // early (the corner x, mid-breath), this guarantees the
+            // flutter rate it slowed down is always restored.
+            butterfly.setFlutterRate(1.0)
             // Fade the chips/close mark alongside the card itself, not
             // after it finishes — otherwise they sit at full opacity with
             // no card behind them for the whole fade, then pop away all at
@@ -192,6 +195,18 @@ final class ScreenOverlay {
                     }
                 }
                 self.choiceWindows = [slider]
+            } else if let checkIn, checkIn.style == .breatheWithMe {
+                butterfly.setFlutterRate(0.35)
+                bubble.startBreathing {
+                    butterfly.setFlutterRate(1.0)
+                    bubble.setLiveText(CheckInContent.randomBreathingClosingLine())
+                }
+            } else if let checkIn, checkIn.style == .eyeRestReset {
+                bubble.startCountdownRing(seconds: 20) { remaining in
+                    bubble.setLiveText("Look away… \(remaining)")
+                } completion: {
+                    bubble.setLiveText(CheckInContent.randomEyeRestClosingLine())
+                }
             } else if let checkIn {
                 self.choiceWindows = checkIn.choices.enumerated().map { index, choice in
                     ChoiceButtonWindow(frame: choiceFrameOnScreen(index), title: choice.label, style: ChoiceButtonWindow.style(for: checkIn.style), dismissesOnClick: false, feedback: ChoiceButtonWindow.feedback(for: checkIn.style)) {

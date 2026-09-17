@@ -10,6 +10,8 @@ enum CheckInStyle: String, CaseIterable {
     case gratitudeTap
     case pickAWord
     case energySlider
+    case breatheWithMe
+    case eyeRestReset
 
     var displayName: String {
         switch self {
@@ -19,8 +21,22 @@ enum CheckInStyle: String, CaseIterable {
         case .gratitudeTap: return "Gratitude Tap"
         case .pickAWord: return "Pick a Word"
         case .energySlider: return "Energy Slider"
+        case .breatheWithMe: return "Breathe With Me"
+        case .eyeRestReset: return "20-20-20 Eye Rest"
         }
     }
+
+    /// True for the styles that ask nothing of the user at all — no chip,
+    /// no drag, nothing to pick. They still reserve BubbleView's one
+    /// full-width strip (for a breathing circle / countdown ring), just
+    /// like the slider does, but never build a ChoiceButtonWindow or log a
+    /// CheckInStore pick, since there's no pick to log.
+    var isZeroTap: Bool { self == .breatheWithMe || self == .eyeRestReset }
+
+    /// Styles whose interactive surface is one continuous strip rather
+    /// than a row of N labeled slots — the slider drags across it, the
+    /// zero-tap styles just animate inside it.
+    var needsSingleReservedStrip: Bool { self == .energySlider || isZeroTap }
 }
 
 struct CheckInChoice {
@@ -45,6 +61,8 @@ struct CheckInContent {
         case .gratitudeTap: return gratitudeTap()
         case .pickAWord: return pickAWord()
         case .energySlider: return energySlider()
+        case .breatheWithMe: return breatheWithMe()
+        case .eyeRestReset: return eyeRestReset()
         }
     }
 
@@ -109,6 +127,27 @@ struct CheckInContent {
     static func energyStageIndex(for fraction: Double) -> Int {
         min(4, max(0, Int(fraction * 5)))
     }
+
+    /// Zero-tap — no choices to pick from, just a single guided breath
+    /// while the butterfly's own flutter visibly slows to match (see
+    /// BubbleView.startBreathing and ButterflyView.setFlutterRate).
+    private static func breatheWithMe() -> CheckInContent {
+        CheckInContent(style: .breatheWithMe, question: ["Let's take a slow breath together 🦋", "One slow breath, together?"].randomElement()!, choices: [])
+    }
+
+    static let breathingClosingLines = ["Nice, well done.", "That's a good reset. 🦋", "Feel that? Carry it with you."]
+    static func randomBreathingClosingLine() -> String { breathingClosingLines.randomElement()! }
+
+    /// Also zero-tap — states the well-known ergonomic rule (every ~20
+    /// minutes, look at something 20 feet away for 20 seconds) and paces
+    /// the actual 20 seconds with a countdown ring, rather than just
+    /// naming the rule and leaving the user to self-time it.
+    private static func eyeRestReset() -> CheckInContent {
+        CheckInContent(style: .eyeRestReset, question: ["Time for a 20-20-20 reset 👀", "Give your eyes a 20-second break"].randomElement()!, choices: [])
+    }
+
+    static let eyeRestClosingLines = ["Welcome back 👀", "Nice, that's a good reset.", "Your eyes say thank you."]
+    static func randomEyeRestClosingLine() -> String { eyeRestClosingLines.randomElement()! }
 
     private static func pickAWord() -> CheckInContent {
         CheckInContent(style: .pickAWord, question: "Which word feels closest right now?", choices: [

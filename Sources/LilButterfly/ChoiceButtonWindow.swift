@@ -76,17 +76,21 @@ final class ChoiceButtonWindow: NSPanel {
         )
     }
 
+    // Zero-tap styles (breatheWithMe, eyeRestReset) never build a
+    // ChoiceButtonWindow at all, but these switches stay exhaustive over
+    // every CheckInStyle regardless — mapped to .plainChip/.scale here is
+    // simply unreachable in practice for them.
     static func style(for checkInStyle: CheckInStyle) -> Style {
         switch checkInStyle {
         case .smilePrompt, .gratitudeTap, .pickAWord: return .textChip
-        case .moodPicker, .favoriteColor, .energySlider: return .plainChip
+        case .moodPicker, .favoriteColor, .energySlider, .breatheWithMe, .eyeRestReset: return .plainChip
         }
     }
 
     static func feedback(for checkInStyle: CheckInStyle) -> Feedback {
         switch checkInStyle {
         case .smilePrompt, .gratitudeTap, .pickAWord: return .selectedChip
-        case .moodPicker, .favoriteColor, .energySlider: return .scale
+        case .moodPicker, .favoriteColor, .energySlider, .breatheWithMe, .eyeRestReset: return .scale
         }
     }
 

@@ -62,8 +62,14 @@ final class InteractiveCheckInTests: XCTestCase {
             let content = CheckInContent.make(style: style)
             XCTAssertEqual(content.style, style)
             XCTAssertFalse(content.question.isEmpty)
-            XCTAssertFalse(content.choices.isEmpty)
-            XCTAssertTrue(content.choices.allSatisfy { !$0.label.isEmpty && !$0.replies.isEmpty })
+            // Zero-tap styles (breathing, eye rest) ask nothing of the
+            // user at all, so they deliberately carry no choices.
+            if style.isZeroTap {
+                XCTAssertTrue(content.choices.isEmpty)
+            } else {
+                XCTAssertFalse(content.choices.isEmpty)
+                XCTAssertTrue(content.choices.allSatisfy { !$0.label.isEmpty && !$0.replies.isEmpty })
+            }
         }
     }
 
