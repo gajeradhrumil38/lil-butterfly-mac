@@ -132,10 +132,14 @@ final class ScreenOverlay {
             guard !didLeave else { return }
             didLeave = true
             butterfly.stopHover()
+            // Fade the chips/close mark alongside the card itself, not
+            // after it finishes — otherwise they sit at full opacity with
+            // no card behind them for the whole fade, then pop away all at
+            // once once bubble.fadeOut's completion runs.
+            closeWindow?.fadeOutAndOrderOut(duration: BubbleView.fadeOutDuration)
+            choiceWindows.forEach { $0.fadeOutAndOrderOut(duration: BubbleView.fadeOutDuration) }
             bubble.fadeOut {
-                self.closeWindow?.orderOut(nil)
                 self.closeWindow = nil
-                self.choiceWindows.forEach { $0.orderOut(nil) }
                 self.choiceWindows.removeAll()
                 bubble.removeFromSuperview()
                 butterfly.flyPath(from: butterfly.centerPosition, to: off, duration: 1.2, easeIn: true) {

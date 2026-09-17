@@ -232,9 +232,41 @@ final class BubbleView: NSView {
         }
     }
 
+    /// Shared with the satellite windows (choice chips, close mark) via
+    /// WindowFading so the whole card — bubble and its buttons — dissolves
+    /// as one visual unit instead of the card fading first and the buttons
+    /// popping away separately afterward.
+    static let fadeOutDuration: TimeInterval = 0.32
+
     func fadeOut(completion: @escaping () -> Void) {
+        // A pure opacity fade read as a flat "cut" rather than the message
+        // actually leaving — pairing it with a small shrink toward the
+        // card's own center (an easeIn curve, so it starts at full speed
+        // and settles rather than drifting off at a constant rate) gives
+        // it the same "dismissing" feel as the close (x) button already
+        // implies visually, instead of just vanishing in place.
+        if let layer {
+            // AppKit anchors a layer-backed view's layer at its frame
+            // origin (0, 0), not its center, by default — scaling the
+            // transform without correcting this shrinks toward the
+            // bottom-left corner instead of dissolving in place. This view
+            // is never reused after fading out, so permanently recentering
+            // the anchor here has no other effect.
+            let bounds = layer.frame
+            layer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+            layer.position = CGPoint(x: bounds.midX, y: bounds.midY)
+            let shrink = CABasicAnimation(keyPath: "transform")
+            shrink.fromValue = layer.transform
+            shrink.toValue = CATransform3DConcat(layer.transform, CATransform3DMakeScale(0.94, 0.94, 1))
+            shrink.duration = Self.fadeOutDuration
+            shrink.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            shrink.fillMode = .forwards
+            shrink.isRemovedOnCompletion = false
+            layer.add(shrink, forKey: "fadeOutShrink")
+        }
         NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = 0.4
+            ctx.duration = Self.fadeOutDuration
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
             animator().alphaValue = 0
         }, completionHandler: completion)
     }

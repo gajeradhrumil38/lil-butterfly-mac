@@ -264,10 +264,10 @@ final class DockedOverlay {
                 guard !didLeave, self.visitID == currentVisitID else { return }
                 didLeave = true
                 butterfly.stopHover()
+                self.closeWindow?.fadeOutAndOrderOut(duration: BubbleView.fadeOutDuration)
+                self.choiceWindows.forEach { $0.fadeOutAndOrderOut(duration: BubbleView.fadeOutDuration) }
                 bubble.fadeOut {
-                    self.closeWindow?.orderOut(nil)
                     self.closeWindow = nil
-                    self.choiceWindows.forEach { $0.orderOut(nil) }
                     self.choiceWindows.removeAll()
                     guard self.visitID == currentVisitID else { return }
                     bubble.removeFromSuperview()
@@ -312,10 +312,10 @@ final class DockedOverlay {
                     guard !didLeave, self.visitID == currentVisitID else { return }
                     didLeave = true
                     butterfly.stopHover()
+                    self.closeWindow?.fadeOutAndOrderOut(duration: BubbleView.fadeOutDuration)
+                    self.choiceWindows.forEach { $0.fadeOutAndOrderOut(duration: BubbleView.fadeOutDuration) }
                     bubble.fadeOut {
-                        self.closeWindow?.orderOut(nil)
                         self.closeWindow = nil
-                        self.choiceWindows.forEach { $0.orderOut(nil) }
                         self.choiceWindows.removeAll()
                         guard self.visitID == currentVisitID else { return }
                         bubble.removeFromSuperview()
