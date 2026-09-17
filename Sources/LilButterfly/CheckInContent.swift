@@ -77,22 +77,22 @@ struct CheckInContent {
 
     private static func gratitudeTap() -> CheckInContent {
         let choices = [
-            ("A good conversation", "Connection is a good thing to carry with you."),
-            ("A little nap", "Rest is productive in its own gentle way."),
-            ("A good book", "I hope you make room for more moments like that."),
-            ("A quiet moment", "Small pockets of peace matter."),
-            ("Something I finished", "Progress deserves to be noticed."),
+            ("💬 A good conversation", "Connection is a good thing to carry with you."),
+            ("😴 A little nap", "Rest is productive in its own gentle way."),
+            ("📖 A good book", "I hope you make room for more moments like that."),
+            ("🧘 A quiet moment", "Small pockets of peace matter."),
+            ("✅ Something I finished", "Progress deserves to be noticed."),
         ].shuffled().map { CheckInChoice(label: $0.0, replies: [$0.1]) }
         return CheckInContent(style: .gratitudeTap, question: "One good thing about today?", choices: choices)
     }
 
     private static func pickAWord() -> CheckInContent {
         CheckInContent(style: .pickAWord, question: "Which word feels closest right now?", choices: [
-            CheckInChoice(label: "Focused", replies: ["That focus is yours — use it kindly."]),
-            CheckInChoice(label: "Overwhelmed", replies: ["You don't have to carry everything at once."]),
-            CheckInChoice(label: "Hopeful", replies: ["That little spark is worth protecting."]),
-            CheckInChoice(label: "Content", replies: ["Contentment is a beautiful place to pause."]),
-            CheckInChoice(label: "Restless", replies: ["You can slow down without falling behind."]),
+            CheckInChoice(label: "🎯 Focused", replies: ["That focus is yours — use it kindly."]),
+            CheckInChoice(label: "😵‍💫 Overwhelmed", replies: ["You don't have to carry everything at once."]),
+            CheckInChoice(label: "🌱 Hopeful", replies: ["That little spark is worth protecting."]),
+            CheckInChoice(label: "😊 Content", replies: ["Contentment is a beautiful place to pause."]),
+            CheckInChoice(label: "🌀 Restless", replies: ["You can slow down without falling behind."]),
         ])
     }
 }
