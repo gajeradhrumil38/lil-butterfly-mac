@@ -9,6 +9,7 @@ enum CheckInStyle: String, CaseIterable {
     case favoriteColor
     case gratitudeTap
     case pickAWord
+    case energySlider
 
     var displayName: String {
         switch self {
@@ -17,6 +18,7 @@ enum CheckInStyle: String, CaseIterable {
         case .favoriteColor: return "Favorite Color Hearts"
         case .gratitudeTap: return "Gratitude Tap"
         case .pickAWord: return "Pick a Word"
+        case .energySlider: return "Energy Slider"
         }
     }
 }
@@ -42,6 +44,7 @@ struct CheckInContent {
         case .favoriteColor: return favoriteColor()
         case .gratitudeTap: return gratitudeTap()
         case .pickAWord: return pickAWord()
+        case .energySlider: return energySlider()
         }
     }
 
@@ -84,6 +87,21 @@ struct CheckInContent {
             ("✅ Something I finished", "Progress deserves to be noticed."),
         ].shuffled().map { CheckInChoice(label: $0.0, replies: [$0.1]) }
         return CheckInContent(style: .gratitudeTap, question: "One good thing about today?", choices: choices)
+    }
+
+    /// Five discrete bar-height levels rather than a real draggable
+    /// NSSlider — every other check-in style is a row of independently
+    /// clickable choices, and reusing that exact mechanism here (one tap
+    /// = one level, same ChoiceButtonWindow/BubbleView plumbing) meant
+    /// this needed zero new interaction code, just content.
+    private static func energySlider() -> CheckInContent {
+        CheckInContent(style: .energySlider, question: ["Where's your energy right now?", "How charged do you feel?"].randomElement()!, choices: [
+            CheckInChoice(label: "▁", replies: ["Running on empty is worth listening to.", "Low is real — even five quiet minutes counts as something.", "Maybe tonight's the night for an early wind-down."]),
+            CheckInChoice(label: "▃", replies: ["Go easy on yourself for this next stretch.", "A little rest now saves a lot more later."]),
+            CheckInChoice(label: "▅", replies: ["Steady is a good place to build from.", "That's a sustainable pace — keep it."]),
+            CheckInChoice(label: "▇", replies: ["That's a great gear to be in.", "Ride it, but remember to coast later too."]),
+            CheckInChoice(label: "█", replies: ["Look at you, fully charged — go make something of it.", "That kind of energy is worth using well."]),
+        ])
     }
 
     private static func pickAWord() -> CheckInContent {
