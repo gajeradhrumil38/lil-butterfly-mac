@@ -153,9 +153,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             restingSeconds = max(config.restingSeconds, 14)
             markActivityNudgeShown = { [weak self] in self?.activityTracker.markLongSessionNudgeShown() }
         } else if activityTracker.secondsSinceLastEyeRestPrompt >= ActivityTracker.eyeRestInterval {
-            // The actual 20-20-20 rule fires from real continuous screen
-            // time (tracked by ActivityTracker), not a flat random chance
-            // shared with every other check-in style.
+            // The eye-rest check-in fires from real continuous screen time
+            // (tracked by ActivityTracker, default every 2 hours — see
+            // ActivityTracker.eyeRestInterval), not a flat random chance
+            // shared with every other check-in style. The break it paces
+            // is still the real 20 seconds the 20-20-20 rule calls for.
             let content = CheckInContent.make(style: .eyeRestReset)
             checkIn = content
             message = content.question

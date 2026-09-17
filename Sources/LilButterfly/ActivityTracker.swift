@@ -21,10 +21,11 @@ final class ActivityTracker {
 
     private static let pollInterval: TimeInterval = 20
 
-    /// The real 20-20-20 rule's own cadence — used to trigger the eye-rest
-    /// check-in from actual continuous screen time, not a flat random
-    /// chance shared with every other style.
-    static let eyeRestInterval: TimeInterval = 20 * 60
+    /// How much real continuous screen time triggers the eye-rest
+    /// check-in (which still paces the actual break as 20 seconds, per
+    /// the 20-20-20 rule — only the "every 20 minutes" cadence is
+    /// overridden here, to a gentler default that fires far less often).
+    static let eyeRestInterval: TimeInterval = 2 * 60 * 60
 
     /// A much longer uninterrupted stretch gets its own, stronger nudge
     /// (Breathe With Me) once per stretch, rather than repeating every
