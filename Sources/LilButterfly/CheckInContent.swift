@@ -89,19 +89,25 @@ struct CheckInContent {
         return CheckInContent(style: .gratitudeTap, question: "One good thing about today?", choices: choices)
     }
 
-    /// Five discrete bar-height levels rather than a real draggable
-    /// NSSlider — every other check-in style is a row of independently
-    /// clickable choices, and reusing that exact mechanism here (one tap
-    /// = one level, same ChoiceButtonWindow/BubbleView plumbing) meant
-    /// this needed zero new interaction code, just content.
+    /// The 5-stage emoji morph the slider drags through. `choices` here are
+    /// content (what the live emoji/message swap to at each stage), not
+    /// separate tap targets — EnergySliderWindow is one continuous drag
+    /// surface, and the overlay picks the current entry via
+    /// `energyStageIndex(for:)` as the thumb moves.
     private static func energySlider() -> CheckInContent {
-        CheckInContent(style: .energySlider, question: ["Where's your energy right now?", "How charged do you feel?"].randomElement()!, choices: [
-            CheckInChoice(label: "▁", replies: ["Running on empty is worth listening to.", "Low is real — even five quiet minutes counts as something.", "Maybe tonight's the night for an early wind-down."]),
-            CheckInChoice(label: "▃", replies: ["Go easy on yourself for this next stretch.", "A little rest now saves a lot more later."]),
-            CheckInChoice(label: "▅", replies: ["Steady is a good place to build from.", "That's a sustainable pace — keep it."]),
-            CheckInChoice(label: "▇", replies: ["That's a great gear to be in.", "Ride it, but remember to coast later too."]),
-            CheckInChoice(label: "█", replies: ["Look at you, fully charged — go make something of it.", "That kind of energy is worth using well."]),
+        CheckInContent(style: .energySlider, question: ["How's your energy right now?", "Where's your battery at?"].randomElement()!, choices: [
+            CheckInChoice(label: "😴", replies: ["Running on empty is worth listening to.", "Low is real — even five quiet minutes counts as something."]),
+            CheckInChoice(label: "🥱", replies: ["Go easy on yourself for this next stretch.", "A little rest now saves a lot more later."]),
+            CheckInChoice(label: "🙂", replies: ["Steady is a good place to build from.", "That's a sustainable pace — keep it."]),
+            CheckInChoice(label: "😄", replies: ["That's a great gear to be in.", "Ride it, but remember to coast later too."]),
+            CheckInChoice(label: "⚡", replies: ["Look at you, fully charged — go make something of it.", "That kind of energy is worth using well."]),
         ])
+    }
+
+    /// Maps a continuous 0...1 drag position onto one of the slider's 5
+    /// discrete emoji/message stages.
+    static func energyStageIndex(for fraction: Double) -> Int {
+        min(4, max(0, Int(fraction * 5)))
     }
 
     private static func pickAWord() -> CheckInContent {

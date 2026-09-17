@@ -39,7 +39,11 @@ final class ScreenOverlay {
     private let screenFrame: CGRect
     private var isBusy = false
     private var closeWindow: BubbleCloseWindow?
-    private var choiceWindows: [ChoiceButtonWindow] = []
+    // NSPanel rather than ChoiceButtonWindow: the energy slider's single
+    // continuous drag surface is an EnergySliderWindow, not a row of
+    // ChoiceButtonWindows, and this array holds whichever kind a given
+    // visit is actually showing.
+    private var choiceWindows: [NSPanel] = []
 
     init(screen: NSScreen) {
         self.window = OverlayWindow(screen: screen)
@@ -85,7 +89,10 @@ final class ScreenOverlay {
         if let actionTitle {
             choiceLabels = [actionTitle]
         } else if let checkIn {
-            choiceLabels = checkIn.choices.map { $0.label }
+            // The slider reserves one full-width strip, not one slot per
+            // stage — its 5 stages are what the live emoji/message morphs
+            // through as it's dragged, not 5 separate tap targets.
+            choiceLabels = checkIn.style == .energySlider ? [""] : checkIn.choices.map { $0.label }
         } else {
             choiceLabels = []
         }
@@ -168,11 +175,24 @@ final class ScreenOverlay {
             // bottom area — the same "one small window draws and handles
             // its own click" approach the close mark already uses, just
             // with a proper labeled control instead of an icon.
-            if let checkIn {
+            if let checkIn, checkIn.style == .energySlider {
                 // A pick reveals its reply in place and holds a bit longer
                 // before leaving, rather than leaving immediately like the
                 // update button does — the reply is the whole point of a
-                // check-in, so it needs time to actually be read.
+                // check-in, so it needs time to actually be read. Here
+                // that "pick" is whatever stage the thumb is in when the
+                // user lets go, not a single tap.
+                let slider = EnergySliderWindow(frame: choiceFrameOnScreen(0)) { stage in
+                    let choice = checkIn.choices[stage]
+                    bubble.setLiveText("\(choice.label)  \(choice.replies.randomElement() ?? choice.replies[0])")
+                } onCommit: { fraction in
+                    CheckInStore.record(style: checkIn.style.rawValue, choice: "\(Int((fraction * 100).rounded()))")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                        leaveNow()
+                    }
+                }
+                self.choiceWindows = [slider]
+            } else if let checkIn {
                 self.choiceWindows = checkIn.choices.enumerated().map { index, choice in
                     ChoiceButtonWindow(frame: choiceFrameOnScreen(index), title: choice.label, style: ChoiceButtonWindow.style(for: checkIn.style), dismissesOnClick: false, feedback: ChoiceButtonWindow.feedback(for: checkIn.style)) {
                         CheckInStore.record(style: checkIn.style.rawValue, choice: choice.label)

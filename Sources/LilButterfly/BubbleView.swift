@@ -103,7 +103,7 @@ final class BubbleView: NSView {
         let minimumChoiceWidth: CGFloat
         switch checkInStyle {
         case .favoriteColor: minimumChoiceWidth = 360
-        case .moodPicker: minimumChoiceWidth = 300
+        case .moodPicker, .energySlider: minimumChoiceWidth = 300
         default: minimumChoiceWidth = choiceLabels.isEmpty ? 0 : 270
         }
         let width = min(maxWidth, max(150, ceil(naturalMeasured.width) + horizontalPadding, minimumChoiceWidth))
@@ -216,6 +216,22 @@ final class BubbleView: NSView {
         }, completionHandler: { [weak self] in
             self?.dotsContainer.removeFromSuperview()
         })
+    }
+
+    /// Swaps the label's text instantly, no fade — used by the energy
+    /// slider's live drag updates, where a per-pixel cross-fade would look
+    /// laggy rather than smooth. Same didRevealText/dotsContainer guard as
+    /// revealReply, in case a drag happens before the typing-dots-to-text
+    /// reveal timer (scheduled from fadeIn) has fired.
+    func setLiveText(_ text: String) {
+        didRevealText = true
+        dotsContainer.removeFromSuperview()
+        let font = NSFont.systemFont(ofSize: 13)
+        label.textStorage?.setAttributedString(NSAttributedString(
+            string: text,
+            attributes: [.font: font, .foregroundColor: NSColor.white]
+        ))
+        label.alphaValue = 1
     }
 
     func fadeIn() {

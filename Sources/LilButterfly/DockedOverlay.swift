@@ -10,7 +10,11 @@ final class DockedOverlay {
     private var isBusy = false
     private var butterfly: ButterflyView?
     private var closeWindow: BubbleCloseWindow?
-    private var choiceWindows: [ChoiceButtonWindow] = []
+    // NSPanel rather than ChoiceButtonWindow: the energy slider's single
+    // continuous drag surface is an EnergySliderWindow, not a row of
+    // ChoiceButtonWindows, and this array holds whichever kind a given
+    // visit is actually showing.
+    private var choiceWindows: [NSPanel] = []
     private var handleWindow: DockedButterflyHandleWindow?
     private var edge: ScreenEdge
     private var positionFraction: Double?
@@ -185,7 +189,10 @@ final class DockedOverlay {
         if let actionTitle {
             choiceLabels = [actionTitle]
         } else if let checkIn {
-            choiceLabels = checkIn.choices.map { $0.label }
+            // The slider reserves one full-width strip, not one slot per
+            // stage — its 5 stages are what the live emoji/message morphs
+            // through as it's dragged, not 5 separate tap targets.
+            choiceLabels = checkIn.style == .energySlider ? [""] : checkIn.choices.map { $0.label }
         } else {
             choiceLabels = []
         }
@@ -239,7 +246,18 @@ final class DockedOverlay {
             butterfly.alphaValue = 1
             butterfly.startHover()
             bubble.fadeIn()
-            if let checkIn {
+            if let checkIn, checkIn.style == .energySlider {
+                let slider = EnergySliderWindow(frame: choiceFrameOnScreen(0)) { stage in
+                    let choice = checkIn.choices[stage]
+                    bubble.setLiveText("\(choice.label)  \(choice.replies.randomElement() ?? choice.replies[0])")
+                } onCommit: { fraction in
+                    CheckInStore.record(style: checkIn.style.rawValue, choice: "\(Int((fraction * 100).rounded()))")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                        leaveNow()
+                    }
+                }
+                choiceWindows = [slider]
+            } else if let checkIn {
                 choiceWindows = checkIn.choices.enumerated().map { index, choice in
                     ChoiceButtonWindow(frame: choiceFrameOnScreen(index), title: choice.label, style: ChoiceButtonWindow.style(for: checkIn.style), dismissesOnClick: false, feedback: ChoiceButtonWindow.feedback(for: checkIn.style)) {
                         CheckInStore.record(style: checkIn.style.rawValue, choice: choice.label)
@@ -287,7 +305,18 @@ final class DockedOverlay {
                 butterfly.alphaValue = 1
                 butterfly.startHover()
                 bubble.fadeIn()
-                if let checkIn {
+                if let checkIn, checkIn.style == .energySlider {
+                    let slider = EnergySliderWindow(frame: choiceFrameOnScreen(0)) { stage in
+                        let choice = checkIn.choices[stage]
+                        bubble.setLiveText("\(choice.label)  \(choice.replies.randomElement() ?? choice.replies[0])")
+                    } onCommit: { fraction in
+                        CheckInStore.record(style: checkIn.style.rawValue, choice: "\(Int((fraction * 100).rounded()))")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                            leaveNow()
+                        }
+                    }
+                    self.choiceWindows = [slider]
+                } else if let checkIn {
                     self.choiceWindows = checkIn.choices.enumerated().map { index, choice in
                         ChoiceButtonWindow(frame: choiceFrameOnScreen(index), title: choice.label, style: ChoiceButtonWindow.style(for: checkIn.style), dismissesOnClick: false, feedback: ChoiceButtonWindow.feedback(for: checkIn.style)) {
                             CheckInStore.record(style: checkIn.style.rawValue, choice: choice.label)

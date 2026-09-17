@@ -67,6 +67,29 @@ final class InteractiveCheckInTests: XCTestCase {
         }
     }
 
+    func testEnergyStageIndexCoversFullDragRangeInOrder() {
+        XCTAssertEqual(CheckInContent.energyStageIndex(for: 0), 0)
+        XCTAssertEqual(CheckInContent.energyStageIndex(for: 0.15), 0)
+        XCTAssertEqual(CheckInContent.energyStageIndex(for: 0.25), 1)
+        XCTAssertEqual(CheckInContent.energyStageIndex(for: 0.5), 2)
+        XCTAssertEqual(CheckInContent.energyStageIndex(for: 0.75), 3)
+        XCTAssertEqual(CheckInContent.energyStageIndex(for: 1), 4)
+
+        let stages = CheckInContent.make(style: .energySlider).choices
+        XCTAssertEqual(stages.count, 5)
+        for fraction in stride(from: 0.0, through: 1.0, by: 0.05) {
+            let index = CheckInContent.energyStageIndex(for: fraction)
+            XCTAssertTrue(stages.indices.contains(index), "fraction \(fraction) produced out-of-range stage \(index)")
+        }
+    }
+
+    func testEnergySliderReservesOneFullWidthDragStripNotFiveSlots() {
+        let content = CheckInContent.make(style: .energySlider)
+        let bubble = BubbleView(message: content.question, choiceLabels: [""], checkInStyle: content.style)
+        let strip = bubble.choiceFrame(at: 0)
+        XCTAssertGreaterThan(strip.width, 200, "the slider needs one wide drag strip, not a narrow single-choice slot")
+    }
+
     func testChoiceLayoutsGiveHeartsRoomAndWrapTextChips() {
         let hearts = CheckInContent.make(style: .favoriteColor)
         let heartBubble = BubbleView(message: hearts.question, choiceLabels: hearts.choices.map(\.label), checkInStyle: hearts.style)
