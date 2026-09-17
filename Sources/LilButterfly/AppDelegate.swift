@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var scheduleTimer: Timer?
     private var nextFireDate: Date?
     private let meetingCalendar = MeetingCalendar()
+    private let activityTracker = ActivityTracker()
     private var meetingReminderTimer: Timer?
     private var remindedMeetingID: String?
     private var latestRelease: GitHubRelease?
@@ -25,6 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private lazy var updateStatusIcon = makeStatusIcon(updateAvailable: true)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        activityTracker.start()
         rebuildOverlays()
         NotificationCenter.default.addObserver(self, selector: #selector(rebuildOverlays), name: NSApplication.didChangeScreenParametersNotification, object: nil)
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -82,7 +84,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func scheduleNext() {
         scheduleTimer?.invalidate()
         let delay = config.randomIntervalSeconds(); nextFireDate = Date().addingTimeInterval(delay)
-        scheduleTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in self?.fireVisit(); self?.scheduleNext() }
+        scheduleTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in self?.attemptScheduledVisit() }
+    }
+
+    /// A scheduled visit (unlike a manual "Show Butterfly Now") only makes
+    /// sense if someone's actually there to see it — showing a message to
+    /// an empty desk, or one that's gone stale by the time the user is
+    /// back, isn't caring, it's just wasted. Recheck shortly instead of
+    /// firing blind or giving up on this cycle entirely; there's no retry
+    /// cap since however long the user's away, this just waits them out.
+    private func attemptScheduledVisit() {
+        guard !activityTracker.isIdle else {
+            scheduleTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: false) { [weak self] _ in self?.attemptScheduledVisit() }
+            return
+        }
+        _ = fireVisit()
+        scheduleNext()
     }
 
     /// Shown once, in place of the usual random pool, on the very first
@@ -111,6 +128,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // seconds a one-line message normally gets — longer than whatever
         // the user configured, specifically for this message.
         var restingSeconds = config.restingSeconds
+        // Set only when a check-in below was chosen for an activity
+        // reason rather than the plain random roll — marked "shown" after
+        // the dispatched check further down, same as the update reminder,
+        // so a failed dispatch (no available overlay) doesn't burn it.
+        var markActivityNudgeShown: (() -> Void)?
         if let forcedCheckIn {
             checkIn = forcedCheckIn
             message = forcedCheckIn.question
@@ -120,6 +142,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             actionTitle = "Update Now"
             onTapped = { [weak self] in self?.startSelfUpdate(release: pendingUpdate) }
             restingSeconds = max(config.restingSeconds, 14)
+        } else if activityTracker.continuousActiveSeconds >= ActivityTracker.longSessionThreshold
+                    && !activityTracker.hasShownLongSessionNudgeThisSession {
+            // A real uninterrupted multi-hour stretch gets the stronger,
+            // zero-tap reset rather than competing with the plain random
+            // check-in roll — earned by actual screen time, not chance.
+            let content = CheckInContent.make(style: .breatheWithMe)
+            checkIn = content
+            message = content.question
+            restingSeconds = max(config.restingSeconds, 14)
+            markActivityNudgeShown = { [weak self] in self?.activityTracker.markLongSessionNudgeShown() }
+        } else if activityTracker.secondsSinceLastEyeRestPrompt >= ActivityTracker.eyeRestInterval {
+            // The actual 20-20-20 rule fires from real continuous screen
+            // time (tracked by ActivityTracker), not a flat random chance
+            // shared with every other check-in style.
+            let content = CheckInContent.make(style: .eyeRestReset)
+            checkIn = content
+            message = content.question
+            restingSeconds = max(config.restingSeconds, 14)
+            markActivityNudgeShown = { [weak self] in self?.activityTracker.markEyeRestShown() }
         } else if Double.random(in: 0..<1) < (1.0 / 12.0) {
             // Rare, occasional — folded into a visit that was going to
             // happen anyway (scheduled or manual), same as the update
@@ -161,6 +202,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // surface this version's reminder.
         if dispatched, let pendingUpdate {
             updateReminderShownForVersion = pendingUpdate.version
+        }
+        if dispatched {
+            markActivityNudgeShown?()
         }
         return dispatched
     }
