@@ -61,6 +61,14 @@ final class EnergySliderWindow: NSPanel {
         contentView?.addSubview(track)
 
         orderFrontRegardless()
+        // NSTrackingArea only fires mouseEntered when the cursor actually
+        // moves into a region — a stationary cursor already over this
+        // spot when the window appears never gets that transition, so the
+        // hand cursor would never show. Checking the actual cursor
+        // position the moment this window appears covers that case.
+        if frame.contains(NSEvent.mouseLocation) {
+            NSCursor.pointingHand.set()
+        }
     }
 
     override var canBecomeKey: Bool { false }
@@ -69,6 +77,9 @@ final class EnergySliderWindow: NSPanel {
     override func setFrame(_ frameRect: NSRect, display flag: Bool) {
         super.setFrame(frameRect.insetBy(dx: -Self.headroom, dy: -Self.headroom), display: flag)
         track?.frame = NSRect(x: Self.headroom, y: Self.headroom, width: frameRect.width, height: frameRect.height)
+        if frameRect.contains(NSEvent.mouseLocation) {
+            NSCursor.pointingHand.set()
+        }
     }
 }
 

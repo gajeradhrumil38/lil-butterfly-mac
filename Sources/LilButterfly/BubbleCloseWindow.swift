@@ -71,10 +71,32 @@ final class BubbleCloseWindow: NSPanel {
         self.icon = icon
 
         orderFrontRegardless()
+        // NSTrackingArea only fires mouseEntered when the cursor actually
+        // moves into a region — confirmed via debug logging that a click
+        // landing here with the cursor already stationary over the spot
+        // (very plausible: this window appears already under wherever the
+        // card put it, which can easily be right where the user was
+        // already aiming) never gets an "entered" transition at all, so
+        // the hand cursor never showed even though the click itself
+        // worked fine. Checking the actual cursor position the moment
+        // this window appears covers exactly that case.
+        if frame.contains(NSEvent.mouseLocation) {
+            NSCursor.pointingHand.set()
+        }
     }
 
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
+
+    /// Repositioning (as the bubble moves during fly-in) can also land
+    /// this window under an already-stationary cursor — same fix as init,
+    /// re-checked against the new position.
+    override func setFrame(_ frameRect: NSRect, display flag: Bool) {
+        super.setFrame(frameRect, display: flag)
+        if frameRect.contains(NSEvent.mouseLocation) {
+            NSCursor.pointingHand.set()
+        }
+    }
 
     @objc private func closeTapped() {
         NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)

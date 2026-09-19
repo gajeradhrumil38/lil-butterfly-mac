@@ -177,6 +177,17 @@ final class ChoiceButtonWindow: NSPanel {
         contentView?.addSubview(button)
 
         orderFrontRegardless()
+        // NSTrackingArea only fires mouseEntered when the cursor actually
+        // moves into a region — a click landing here with the cursor
+        // already stationary over the spot (very plausible: this window
+        // appears already wherever the card put it, which can easily be
+        // right where the user was already aiming) never gets an
+        // "entered" transition, so the hand cursor never showed even
+        // though clicking itself worked fine. Checking the actual cursor
+        // position the moment this window appears covers that case.
+        if frame.contains(NSEvent.mouseLocation) {
+            NSCursor.pointingHand.set()
+        }
     }
 
     override var canBecomeKey: Bool { false }
@@ -189,6 +200,9 @@ final class ChoiceButtonWindow: NSPanel {
     override func setFrame(_ frameRect: NSRect, display flag: Bool) {
         super.setFrame(frameRect.insetBy(dx: -headroom, dy: -headroom), display: flag)
         button?.frame = NSRect(x: headroom, y: headroom, width: frameRect.width, height: frameRect.height)
+        if frameRect.contains(NSEvent.mouseLocation) {
+            NSCursor.pointingHand.set()
+        }
     }
 
     private func hoverChanged(_ isInside: Bool) {
