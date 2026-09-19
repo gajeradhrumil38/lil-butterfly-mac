@@ -269,18 +269,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             addItem(to: menu, title: "Check for Updates…", action: #selector(checkForUpdatesTapped), symbol: "arrow.triangle.2.circlepath")
         }
         addItem(to: menu, title: "Show Butterfly", action: #selector(showNowTapped), symbol: "sparkles")
-        addItem(to: menu, title: "Show Butterfly (with a Friend)", action: #selector(showCompanionVisitTapped), symbol: "sparkles")
-        let checkInTestMenu = NSMenu(title: "Test Interactive Check-In")
+
+        // Everything here is a QA/preview tool, not a feature a regular
+        // user needs day to day — tucked into one submenu instead of
+        // sitting at the top level, where "Show Butterfly (with a
+        // Friend)" and a whole check-in test list previously crowded out
+        // the handful of items people actually use often.
+        let testMenu = NSMenu(title: "Test")
+        testMenu.minimumWidth = 250
+        addItem(to: testMenu, title: "Show Butterfly (with a Friend)", action: #selector(showCompanionVisitTapped), symbol: "sparkles")
+        testMenu.addItem(.separator())
+        let checkInTestMenu = NSMenu(title: "Interactive Check-In")
         checkInTestMenu.minimumWidth = 240
         addCheckInTestItem(to: checkInTestMenu, title: "Random Choice-Row Variant", style: nil)
         checkInTestMenu.addItem(.separator())
         for style in CheckInStyle.allCases {
             addCheckInTestItem(to: checkInTestMenu, title: style.displayName, style: style)
         }
-        let checkInTestItem = NSMenuItem(title: "Test Interactive Check-In", action: nil, keyEquivalent: "")
+        let checkInTestItem = NSMenuItem(title: "Interactive Check-In", action: nil, keyEquivalent: "")
         checkInTestItem.image = symbolImage("hand.tap")
         checkInTestItem.submenu = checkInTestMenu
-        menu.addItem(checkInTestItem)
+        testMenu.addItem(checkInTestItem)
+        let testItem = NSMenuItem(title: "Test", action: nil, keyEquivalent: "")
+        testItem.image = symbolImage("wrench.and.screwdriver")
+        testItem.submenu = testMenu
+        menu.addItem(testItem)
+
         addItem(
             to: menu,
             title: config.paused ? "Resume Visits" : "Pause Visits",
