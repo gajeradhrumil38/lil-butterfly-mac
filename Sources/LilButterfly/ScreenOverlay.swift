@@ -85,7 +85,8 @@ final class ScreenOverlay {
         restingSeconds: Double = 5.0,
         actionTitle: String? = nil,
         onTapped: (() -> Void)? = nil,
-        checkIn: CheckInContent? = nil
+        checkIn: CheckInContent? = nil,
+        withCompanion: Bool = false
     ) {
         guard !isBusy, let host = window.contentView else { return }
         isBusy = true
@@ -97,6 +98,22 @@ final class ScreenOverlay {
 
         let butterfly = ButterflyView(center: off, pinnedAssetIndex: pinnedAssetIndex, displayWidth: displayWidth)
         host.addSubview(butterfly)
+
+        // The rare "a friend came along" visit: a second, purely decorative
+        // butterfly that arrives and leaves alongside the first — no
+        // message, no interaction of its own, offset a little from the
+        // primary's rest spot so they read as a pair rather than
+        // overlapping. Slightly smaller so it doesn't compete visually
+        // with the one actually delivering the message.
+        let companionRest = CGPoint(x: rest.x + 30, y: rest.y + 24)
+        var companion: ButterflyView?
+        var companionOff: CGPoint = .zero
+        if withCompanion {
+            companionOff = edge.offscreenPoint(in: screenFrame, restX: companionRest.x, restY: companionRest.y, margin: margin)
+            let view = ButterflyView(center: companionOff, pinnedAssetIndex: nil, displayWidth: displayWidth * 0.85)
+            host.addSubview(view)
+            companion = view
+        }
 
         let choiceLabels: [String]
         if let actionTitle {
@@ -151,6 +168,7 @@ final class ScreenOverlay {
             guard !didLeave else { return }
             didLeave = true
             butterfly.stopHover()
+            companion?.stopHover()
             // Idempotent safety net: if the breathing style is closed
             // early (the corner x, mid-breath), this guarantees the
             // flutter rate it slowed down is always restored.
@@ -169,6 +187,11 @@ final class ScreenOverlay {
                     butterfly.removeFromSuperview()
                     self.isBusy = false
                 }
+                if let companion {
+                    companion.flyPath(from: companion.centerPosition, to: companionOff, duration: 1.2, easeIn: true) {
+                        companion.removeFromSuperview()
+                    }
+                }
             }
         }
 
@@ -177,6 +200,12 @@ final class ScreenOverlay {
             butterfly.alphaValue = 1
             butterfly.startHover()
             bubble.fadeIn()
+            if let companion {
+                companion.flyPath(from: companionOff, to: companionRest, duration: 1.6, easeIn: false) {
+                    companion.alphaValue = 1
+                    companion.startHover()
+                }
+            }
 
             // Created only once the butterfly has actually arrived and the
             // bubble is in its final on-screen spot — creating this upfront

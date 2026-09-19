@@ -38,6 +38,10 @@ struct Config: Codable {
     /// How long the message card stays fully visible before it starts
     /// disappearing, in seconds. Set by the menu's resting-time slider.
     var restingSeconds: Double
+    /// The last time a rare "a friend came along" two-butterfly visit
+    /// happened — enforces a floor of about a week between them so the
+    /// surprise stays a surprise instead of becoming a regular occurrence.
+    var lastCompanionVisitDate: Date?
 
     static var `default`: Config {
         Config(
@@ -215,7 +219,8 @@ struct Config: Codable {
             hasStarted: false,
             dockPositionFraction: nil,
             butterflySizeIndex: ButterflySize.defaultIndex,
-            restingSeconds: 5.0
+            restingSeconds: 5.0,
+            lastCompanionVisitDate: nil
         )
     }
 
@@ -234,6 +239,14 @@ struct Config: Codable {
         } else {
             return hour >= quietHoursStart || hour < quietHoursEnd
         }
+    }
+
+    /// At least a week must have passed since the last one — a floor, not
+    /// a schedule, so the actual moment still feels like a surprise rather
+    /// than "it's Tuesday, here comes the friend."
+    func isCompanionVisitEligible(at date: Date = Date()) -> Bool {
+        guard let lastCompanionVisitDate else { return true }
+        return date.timeIntervalSince(lastCompanionVisitDate) >= 7 * 24 * 60 * 60
     }
 
     func randomIntervalSeconds() -> TimeInterval {
@@ -310,7 +323,7 @@ extension Config {
         case suppressDuringMeetings, meetingReminderEnabled, meetingReminderMinutes
         case hasStarted, dockPositionFraction, butterflySizeIndex, restingSeconds
         case morningMessages, middayMessages, afternoonMessages, eveningMessages
-        case lateNightMessages, sleepMessages
+        case lateNightMessages, sleepMessages, lastCompanionVisitDate
     }
 
     init(from decoder: Decoder) throws {
@@ -340,7 +353,8 @@ extension Config {
             hasStarted: try c.decodeIfPresent(Bool.self, forKey: .hasStarted) ?? false,
             dockPositionFraction: try c.decodeIfPresent(Double.self, forKey: .dockPositionFraction),
             butterflySizeIndex: try c.decodeIfPresent(Int.self, forKey: .butterflySizeIndex) ?? ButterflySize.defaultIndex,
-            restingSeconds: try c.decodeIfPresent(Double.self, forKey: .restingSeconds) ?? 5.0
+            restingSeconds: try c.decodeIfPresent(Double.self, forKey: .restingSeconds) ?? 5.0,
+            lastCompanionVisitDate: try c.decodeIfPresent(Date.self, forKey: .lastCompanionVisitDate)
         )
     }
 }

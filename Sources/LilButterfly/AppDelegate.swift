@@ -108,7 +108,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private static let welcomeMessage = "Hi there — just a gentle reminder to pause sometimes. I know you're hardworking and dedicated, but you deserve rest too. Made with a lot of care, just for you 🦋"
 
     @discardableResult
-    private func fireVisit(manualOverride: Bool = false, forcedCheckIn: CheckInContent? = nil) -> Bool {
+    private func fireVisit(manualOverride: Bool = false, forcedCheckIn: CheckInContent? = nil, forceCompanionVisit: Bool = false) -> Bool {
         guard manualOverride || !config.paused else { return false }
         guard manualOverride || !config.suppressDuringMeetings ||
                 (!MeetingDetector.isMeetingAppActive && !meetingCalendar.isVideoMeetingActive()) else { return false }
@@ -133,6 +133,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // the dispatched check further down, same as the update reminder,
         // so a failed dispatch (no available overlay) doesn't burn it.
         var markActivityNudgeShown: (() -> Void)?
+        var companionVisit = false
         if let forcedCheckIn {
             checkIn = forcedCheckIn
             message = forcedCheckIn.question
@@ -163,6 +164,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             message = content.question
             restingSeconds = max(config.restingSeconds, 14)
             markActivityNudgeShown = { [weak self] in self?.activityTracker.markEyeRestShown() }
+        } else if forceCompanionVisit || (config.mode != "docked" && config.isCompanionVisitEligible() && Double.random(in: 0..<1) < (1.0 / 15.0)) {
+            // A rare surprise, not a schedule: eligible again roughly a
+            // week after the last one (see Config.isCompanionVisitEligible),
+            // but only actually happens on about 1 in 15 eligible visits
+            // after that, so the exact moment still feels unplanned rather
+            // than landing the instant a week is up. Docked mode skips
+            // this — DockedButterflyHandleWindow's drag/click handling has
+            // no notion of a second butterfly, and this is purely a
+            // roaming-visit delight, not worth the added complexity there.
+            message = Self.companionVisitMessages.randomElement()!
+            companionVisit = true
+            restingSeconds = max(config.restingSeconds, 8)
         } else if Double.random(in: 0..<1) < (1.0 / 12.0) {
             // Rare, occasional — folded into a visit that was going to
             // happen anyway (scheduled or manual), same as the update
@@ -193,7 +206,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 dispatched = false
             }
         } else if let overlay = overlays.filter({ $0.isAvailable }).randomElement() {
-            overlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: restingSeconds, actionTitle: actionTitle, onTapped: onTapped, checkIn: checkIn)
+            overlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: restingSeconds, actionTitle: actionTitle, onTapped: onTapped, checkIn: checkIn, withCompanion: companionVisit)
             dispatched = true
         } else {
             dispatched = false
@@ -208,8 +221,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if dispatched {
             markActivityNudgeShown?()
         }
+        if dispatched, companionVisit {
+            config.lastCompanionVisitDate = Date()
+            ConfigStore.save(config)
+        }
         return dispatched
     }
+
+    /// Flavor text for the rare "a friend came along" visit — a second
+    /// butterfly arrives alongside the first purely for delight, no new
+    /// interaction, so these lean into the surprise itself rather than
+    /// carrying any particular advice.
+    private static let companionVisitMessages = [
+        "A friend came to say hi too 🦋🦋",
+        "Look who tagged along today",
+        "Brought company this time",
+        "Two of us stopped by today",
+    ]
 
     func menuNeedsUpdate(_ menu: NSMenu) { rebuildMenu(menu) }
 
@@ -241,6 +269,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             addItem(to: menu, title: "Check for Updates…", action: #selector(checkForUpdatesTapped), symbol: "arrow.triangle.2.circlepath")
         }
         addItem(to: menu, title: "Show Butterfly", action: #selector(showNowTapped), symbol: "sparkles")
+        addItem(to: menu, title: "Show Butterfly (with a Friend)", action: #selector(showCompanionVisitTapped), symbol: "sparkles")
         let checkInTestMenu = NSMenu(title: "Test Interactive Check-In")
         checkInTestMenu.minimumWidth = 240
         addCheckInTestItem(to: checkInTestMenu, title: "Random Choice-Row Variant", style: nil)
@@ -475,6 +504,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func showNowTapped() { _ = fireVisit(manualOverride: true) }
+    @objc private func showCompanionVisitTapped() { _ = fireVisit(manualOverride: true, forceCompanionVisit: true) }
 
     /// Opens a check-in on demand so every choice can be exercised without
     /// waiting for the scheduled visit or the occasional-content chance.
