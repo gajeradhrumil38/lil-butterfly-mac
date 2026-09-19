@@ -27,10 +27,15 @@ final class KaviiRevealOverlay {
         /// word visibly builds in reading order (left-to-right or
         /// top-to-bottom) rather than scattering in all at once.
         case sideSweep
-        /// Butterflies start almost exactly where they'll land and drift
-        /// the last short distance into place — reads as materializing
-        /// rather than arriving from far away.
-        case converge
+        /// Each butterfly enters from whichever of the four screen corners
+        /// is nearest its own target, well past the corner diagonally — the
+        /// word is visibly pulled together from all four corners of the
+        /// screen at once, rather than from one edge.
+        case cornerConverge
+        /// Alternates each row's entrance between the far left and far
+        /// right edges (by index parity), aimed at its own row's height —
+        /// reads as a "zipper" closing into the word from both sides.
+        case alternatingSweep
     }
 
     init(screen: NSScreen) {
@@ -62,8 +67,12 @@ final class KaviiRevealOverlay {
                 delay = Double(index) * 0.04
 
             case .topBurst:
-                start = CGPoint(x: screenFrame.midX, y: screenFrame.height + 30)
-                flightDuration = 0.5
+                // Spread across a wide arc and well above the screen
+                // (rather than one funnel point just past the edge) so
+                // the whole group visibly arrives from outside, not from
+                // a single spot barely off-screen.
+                start = CGPoint(x: screenFrame.midX + CGFloat.random(in: -160...160), y: screenFrame.height + 140)
+                flightDuration = 0.75
                 delay = Double(index) * 0.02
 
             case .sideSweep:
@@ -77,12 +86,21 @@ final class KaviiRevealOverlay {
                 flightDuration = 0.9
                 delay = Double(alongEdgeFraction) * 1.1
 
-            case .converge:
-                let jitter: CGFloat = 26
-                start = CGPoint(x: target.x + CGFloat.random(in: -jitter...jitter),
-                                y: target.y + CGFloat.random(in: -jitter...jitter))
-                flightDuration = 0.8
-                delay = Double(index) * 0.015
+            case .cornerConverge:
+                let fromLeft = target.x < wordBounds.midX
+                let fromBottom = target.y < wordBounds.midY
+                start = CGPoint(
+                    x: fromLeft ? -70 : screenFrame.width + 70,
+                    y: fromBottom ? -70 : screenFrame.height + 70
+                )
+                flightDuration = 1.1
+                delay = Double(index) * 0.02
+
+            case .alternatingSweep:
+                let edge: ScreenEdge = index % 2 == 0 ? .left : .right
+                start = edge.offscreenPoint(in: screenFrame, restX: 0, restY: target.y, margin: 0)
+                flightDuration = 0.85
+                delay = Double(index) * 0.03
             }
 
             let butterfly = ButterflyView(center: start, pinnedAssetIndex: Int.random(in: 0..<assetCount), displayWidth: 20)
