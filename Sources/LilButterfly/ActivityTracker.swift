@@ -37,8 +37,15 @@ final class ActivityTracker {
     private(set) var hasShownLongSessionNudgeThisSession = false
     private var timer: Timer?
 
+    /// kCGAnyInputEventType — "the most recent event of any input type".
+    /// Swift's `.null` is NOT this (it's event type 0, which never occurs
+    /// and reports ~time-since-boot, ~24h on a normal day) — passing it
+    /// made isIdle permanently true, so scheduled visits were deferred
+    /// forever and the activity clocks never advanced.
+    static let anyInputEventType = CGEventType(rawValue: ~0)!
+
     var idleSeconds: TimeInterval {
-        CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: .null)
+        CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: Self.anyInputEventType)
     }
 
     var isIdle: Bool { idleSeconds >= Self.idleThreshold }

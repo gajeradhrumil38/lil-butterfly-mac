@@ -96,6 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// cap since however long the user's away, this just waits them out.
     private func attemptScheduledVisit() {
         guard !activityTracker.isIdle else {
+            nextFireDate = Date().addingTimeInterval(30)
             scheduleTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: false) { [weak self] _ in self?.attemptScheduledVisit() }
             return
         }

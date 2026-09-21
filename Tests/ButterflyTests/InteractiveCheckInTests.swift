@@ -96,6 +96,13 @@ final class InteractiveCheckInTests: XCTestCase {
         XCTAssertGreaterThan(strip.width, 200, "the slider needs one wide drag strip, not a narrow single-choice slot")
     }
 
+    func testIdleTimeUsesAnyInputEventTypeNotNull() {
+        // .null (0) reports ~time-since-boot, which made every user look
+        // permanently idle and silently blocked all scheduled visits.
+        XCTAssertEqual(ActivityTracker.anyInputEventType.rawValue, UInt32.max)
+        XCTAssertNotEqual(ActivityTracker.anyInputEventType, .null)
+    }
+
     func testChoiceLayoutsGiveHeartsRoomAndWrapTextChips() {
         let hearts = CheckInContent.make(style: .favoriteColor)
         let heartBubble = BubbleView(message: hearts.question, choiceLabels: hearts.choices.map(\.label), checkInStyle: hearts.style)
