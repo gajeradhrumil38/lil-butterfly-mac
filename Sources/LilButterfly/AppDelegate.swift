@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// on the next message that would have happened anyway, rather than
     /// nagging on every single visit.
     private var updateReminderShownForVersion: String?
+    private var updateCheckTimer: Timer?
     private lazy var updateChecker = UpdateChecker(currentVersion: installedVersion)
     private lazy var selfUpdater = SelfUpdater()
     private lazy var regularStatusIcon = makeStatusIcon(updateAvailable: false)
@@ -34,6 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let menu = NSMenu(); menu.delegate = self; statusItem.menu = menu
         rebuildMenu(menu); scheduleNext(); updateMeetingReminderTimer()
         checkForUpdates(showResult: false)
+        startPeriodicUpdateChecks()
         // A dedicated centered moment — a ring of butterflies bringing the
         // message, not an ordinary edge-in roaming visit — rather than
         // routing through fireVisit's quiet-hours/pause gating, since this
@@ -624,6 +626,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     self.latestRelease = release
                     self.configureStatusIcon(updateAvailable: release != nil)
                     if let menu = self.statusItem?.menu { self.rebuildMenu(menu) }
+                    if !showResult { self.nudgeAboutUpdateIfNeeded() }
                     if showResult {
                         if let release {
                             self.presentBubbleNotice(
@@ -657,14 +660,53 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// not-key/not-frontmost — a click meant to dismiss it then lands on
     /// whatever app actually was frontmost instead, which is exactly the
     /// "click outside the message does something wrong" bug this removes.
-    private func presentBubbleNotice(message: String, actionTitle: String? = nil, onTapped: (() -> Void)? = nil) {
+    @discardableResult
+    private func presentBubbleNotice(message: String, actionTitle: String? = nil, onTapped: (() -> Void)? = nil) -> Bool {
         let displayWidth = ButterflySize.width(forIndex: config.butterflySizeIndex)
         let restingSeconds = max(config.restingSeconds, 14)
         if config.mode == "docked" || config.mode == "window" {
-            dockedOverlay?.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: restingSeconds, actionTitle: actionTitle, onTapped: onTapped)
+            guard let dockedOverlay, dockedOverlay.isAvailable else { return false }
+            dockedOverlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: restingSeconds, actionTitle: actionTitle, onTapped: onTapped)
+            return true
         } else if let overlay = overlays.filter({ $0.isAvailable }).randomElement() {
             overlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: restingSeconds, actionTitle: actionTitle, onTapped: onTapped)
+            return true
         }
+        return false
+    }
+
+    /// The update reminder used to ride only on scheduled visits — so when
+    /// visits themselves were broken (v1.0.19-1.0.31 never fired any, from
+    /// a wrong idle-time API argument), the one channel that would have
+    /// told people to update was dead too, and they had no way to learn
+    /// the fix existed. This delivers it independently of the visit
+    /// scheduler, right when a check finds a newer version: once per
+    /// version per launch, and only when a gentle moment (not paused, not
+    /// quiet hours, not in a meeting, someone actually at the keyboard).
+    /// If it can't show now, the next periodic re-check simply tries again.
+    private func nudgeAboutUpdateIfNeeded() {
+        guard let release = latestRelease,
+              updateReminderShownForVersion != release.version,
+              !isUpdating, !config.paused, !config.isQuietHour(),
+              !activityTracker.isIdle,
+              !config.suppressDuringMeetings || (!MeetingDetector.isMeetingAppActive && !meetingCalendar.isVideoMeetingActive())
+        else { return }
+        let shown = presentBubbleNotice(
+            message: "A new Butterfly (v\(release.version)) is ready.",
+            actionTitle: "Update Now"
+        ) { [weak self] in self?.startSelfUpdate(release: release) }
+        if shown { updateReminderShownForVersion = release.version }
+    }
+
+    /// Re-checks while running — the launch-only check meant a Mac left on
+    /// for weeks never learned a new version existed.
+    private func startPeriodicUpdateChecks() {
+        updateCheckTimer?.invalidate()
+        let timer = Timer.scheduledTimer(withTimeInterval: 6 * 60 * 60, repeats: true) { [weak self] _ in
+            self?.checkForUpdates(showResult: false)
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        updateCheckTimer = timer
     }
 
     @objc private func togglePauseTapped() {
