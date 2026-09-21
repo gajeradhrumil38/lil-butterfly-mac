@@ -101,13 +101,20 @@ final class DockedOverlay {
         handleWindow = nil
     }
 
-    /// Left/right docking pins the butterfly's center exactly on the screen
-    /// edge (x = 0 or x = screenFrame.width) so half of it renders past the
-    /// window's own bounds and is naturally clipped — it reads as perched on
-    /// the border rather than floating just inside it. Top/bottom keep the
-    /// original fully-visible, margin-inset placement. When the user has
-    /// dragged the butterfly to a specific spot, that fraction wins over the
-    /// usual random placement along the edge.
+    /// A razor-exact half clip (center.x precisely at 0 or screenWidth) read
+    /// as slightly too little of the butterfly to recognize, especially
+    /// with the wing-flutter's 3D perspective in motion — shifting the
+    /// anchor this far onto the screen shows a bit more than half without
+    /// losing the "perched right on the border" read.
+    private static let edgeDockVisibleBias: CGFloat = 10
+
+    /// Left/right docking pins the butterfly's center just past the screen
+    /// edge so a bit more than half of it renders past the window's own
+    /// bounds and is naturally clipped — it reads as perched on the border
+    /// rather than floating just inside it. Top/bottom keep the original
+    /// fully-visible, margin-inset placement. When the user has dragged the
+    /// butterfly to a specific spot, that fraction wins over the usual
+    /// random placement along the edge.
     private func dockPoint(margin: CGFloat) -> CGPoint {
         if followsActiveWindow {
             guard let activeWindowFrame else {
@@ -126,7 +133,8 @@ final class DockedOverlay {
         case .left, .right:
             let y = positionFraction.map { CGFloat($0) * screenFrame.height }
                 ?? (screenFrame.height * CGFloat.random(in: 0.2...0.8))
-            return CGPoint(x: edge == .left ? 0 : screenFrame.width, y: clamp(y, 20, screenFrame.height - 20))
+            let x = edge == .left ? Self.edgeDockVisibleBias : screenFrame.width - Self.edgeDockVisibleBias
+            return CGPoint(x: x, y: clamp(y, 20, screenFrame.height - 20))
         case .top, .bottom:
             guard let positionFraction else {
                 return edge.restPoint(in: screenFrame, margin: margin)
@@ -144,10 +152,26 @@ final class DockedOverlay {
         min(max(value, lower), upper)
     }
 
+    /// True only for the screen-edge case that actually gets hard-clipped
+    /// by the window's own bounds — top/bottom docking and "follow active
+    /// window" both show the whole butterfly, so neither needs the
+    /// enlarged size or gentler flutter this compensates with.
+    private var isEdgeClipped: Bool { !followsActiveWindow && (edge == .left || edge == .right) }
+
     private func ensureParked(pinnedAssetIndex: Int?, displayWidth: CGFloat) -> ButterflyView? {
         if let butterfly { return butterfly }
         guard let host = window.contentView else { return nil }
-        let view = ButterflyView(center: dockPoint(margin: 40), pinnedAssetIndex: pinnedAssetIndex, displayWidth: displayWidth)
+        // A razor-half clip of a small butterfly reads as barely
+        // recognizable, more so once the wing-flutter's perspective is
+        // moving — sized up so the visible portion still reads clearly as
+        // "a butterfly perched here" rather than an ambiguous sliver.
+        let effectiveWidth = isEdgeClipped ? displayWidth * 1.25 : displayWidth
+        let view = ButterflyView(
+            center: dockPoint(margin: 40),
+            pinnedAssetIndex: pinnedAssetIndex,
+            displayWidth: effectiveWidth,
+            edgeClipped: isEdgeClipped
+        )
         host.addSubview(view)
         butterfly = view
         attachHandleWindow()

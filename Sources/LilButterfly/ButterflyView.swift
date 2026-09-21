@@ -18,7 +18,12 @@ final class ButterflyView: NSView {
     private let leftWing = CALayer()
     private let rightWing = CALayer()
 
-    init(center: CGPoint, pinnedAssetIndex: Int?, displayWidth: CGFloat = ButterflySize.widths[ButterflySize.defaultIndex]) {
+    init(
+        center: CGPoint,
+        pinnedAssetIndex: Int?,
+        displayWidth: CGFloat = ButterflySize.widths[ButterflySize.defaultIndex],
+        edgeClipped: Bool = false
+    ) {
         let asset = WingAssets.pick(pinnedIndex: pinnedAssetIndex)
         let image = asset.image
         let pointSize = CGSize(
@@ -42,7 +47,7 @@ final class ButterflyView: NSView {
         super.init(frame: frame)
         wantsLayer = true
         buildWings(from: image, inkBounds: asset.inkBounds, displaySize: displaySize)
-        startFlutter()
+        startFlutter(edgeClipped: edgeClipped)
     }
 
     required init?(coder: NSCoder) { fatalError("unavailable") }
@@ -107,12 +112,23 @@ final class ButterflyView: NSView {
     /// anchorPoint (already pinned to its body-side edge) makes the tip
     /// genuinely foreshorten toward/away from the viewer as it swings —
     /// much closer to a real wing flap for the same animation cost.
-    private func startFlutter() {
+    ///
+    /// `edgeClipped` softens both the perspective depth and the flap angle
+    /// — when this view is centered on a screen edge for left/right
+    /// docking, only one wing is ever actually on screen (the window's own
+    /// bounds hard-clip the other half), and that lone wing's hinge sits
+    /// right on the clip line. The full-strength foreshortening was tuned
+    /// for two wings meeting symmetrically at that hinge; on just one, the
+    /// same rotation swings its far edge sharply toward/away from the clip
+    /// boundary, reading as an odd warp rather than a clean flap — a flat
+    /// 2D silhouette wouldn't have this problem, only the 3D perspective
+    /// does once it's cropped in half.
+    private func startFlutter(edgeClipped: Bool = false) {
         var perspective = CATransform3DIdentity
-        perspective.m34 = -1.0 / 600
+        perspective.m34 = edgeClipped ? -1.0 / 1400 : -1.0 / 600
         layer?.sublayerTransform = perspective
 
-        let flapAmplitude: CGFloat = 1.15 // radians; short of pi/2 so the wing never goes fully edge-on
+        let flapAmplitude: CGFloat = edgeClipped ? 0.55 : 1.15 // radians; short of pi/2 so the wing never goes fully edge-on
 
         let flutter = CABasicAnimation(keyPath: "transform.rotation.y")
         flutter.fromValue = 0
