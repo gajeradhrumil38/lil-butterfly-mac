@@ -52,7 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         overlays.removeAll()
         dockedOverlay?.stop()
         dockedOverlay = nil
-        if config.mode == "docked" {
+        if config.mode == "docked" || config.mode == "window" {
             if let main = preferredScreen {
                 // Configs saved before top/bottom docking was removed can
                 // still have one of those on disk — fall back to right
@@ -74,6 +74,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     self.config.dockPositionFraction = fraction
                     ConfigStore.save(self.config)
                 }
+                docked.setFollowsActiveWindow(config.mode == "window")
                 docked.parkNow(pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: ButterflySize.width(forIndex: config.butterflySizeIndex)); dockedOverlay = docked
             }
         } else {
@@ -164,7 +165,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             message = content.question
             restingSeconds = max(config.restingSeconds, 14)
             markActivityNudgeShown = { [weak self] in self?.activityTracker.markEyeRestShown() }
-        } else if forceCompanionVisit || (config.mode != "docked" && config.isCompanionVisitEligible() && Double.random(in: 0..<1) < (1.0 / 15.0)) {
+        } else if forceCompanionVisit || (config.mode == "roaming" && config.isCompanionVisitEligible() && Double.random(in: 0..<1) < (1.0 / 15.0)) {
             // A rare surprise, not a schedule: eligible again roughly a
             // week after the last one (see Config.isCompanionVisitEligible),
             // but only actually happens on about 1 in 15 eligible visits
@@ -198,7 +199,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         let displayWidth = ButterflySize.width(forIndex: config.butterflySizeIndex)
         let dispatched: Bool
-        if config.mode == "docked" {
+        if config.mode == "docked" || config.mode == "window" {
             if let dockedOverlay {
                 dockedOverlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: restingSeconds, actionTitle: actionTitle, onTapped: onTapped, checkIn: checkIn)
                 dispatched = true
@@ -323,6 +324,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         movementMenu.minimumWidth = 230
         addModeItem(to: movementMenu, title: "Roam", mode: "roaming", symbol: "paperplane")
         addModeItem(to: movementMenu, title: "Dock", mode: "docked", symbol: "pin.fill")
+        addModeItem(to: movementMenu, title: "Active Window", mode: "window", symbol: "macwindow")
         movementMenu.addItem(.separator())
         let edgeMenu = NSMenu()
         // Docking to the top or bottom edge is what put the parked
@@ -343,17 +345,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let edgeItem = NSMenuItem(title: "Dock Edge", action: nil, keyEquivalent: "")
         edgeItem.image = symbolImage("square.dashed")
         edgeItem.submenu = edgeMenu
+        // Meaningless in "Active Window" mode — the edge only applies to
+        // the fixed screen-edge Dock mode, and the window corner isn't
+        // user-chosen there either.
+        edgeItem.isEnabled = config.mode == "docked"
         movementMenu.addItem(edgeItem)
-        let dragHint = NSMenuItem(title: "Drag Butterfly to Move", action: nil, keyEquivalent: "")
-        dragHint.image = symbolImage("hand.draw")
-        dragHint.isEnabled = false
-        movementMenu.addItem(dragHint)
-        let movementItem = NSMenuItem(
-            title: config.mode == "docked" ? "Movement · Docked" : "Movement · Roaming",
+        let dragHint = NSMenuItem(
+            title: config.mode == "window" ? "Follows Your Active Window" : "Drag Butterfly to Move",
             action: nil,
             keyEquivalent: ""
         )
-        movementItem.image = symbolImage(config.mode == "docked" ? "pin.fill" : "paperplane")
+        dragHint.image = symbolImage(config.mode == "window" ? "macwindow" : "hand.draw")
+        dragHint.isEnabled = false
+        movementMenu.addItem(dragHint)
+        let movementSummary: String
+        let movementSymbol: String
+        switch config.mode {
+        case "docked": movementSummary = "Docked"; movementSymbol = "pin.fill"
+        case "window": movementSummary = "Active Window"; movementSymbol = "macwindow"
+        default: movementSummary = "Roaming"; movementSymbol = "paperplane"
+        }
+        let movementItem = NSMenuItem(title: "Movement · \(movementSummary)", action: nil, keyEquivalent: "")
+        movementItem.image = symbolImage(movementSymbol)
         movementItem.submenu = movementMenu
         menu.addItem(movementItem)
 
@@ -646,7 +659,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func presentBubbleNotice(message: String, actionTitle: String? = nil, onTapped: (() -> Void)? = nil) {
         let displayWidth = ButterflySize.width(forIndex: config.butterflySizeIndex)
         let restingSeconds = max(config.restingSeconds, 14)
-        if config.mode == "docked" {
+        if config.mode == "docked" || config.mode == "window" {
             dockedOverlay?.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: restingSeconds, actionTitle: actionTitle, onTapped: onTapped)
         } else if let overlay = overlays.filter({ $0.isAvailable }).randomElement() {
             overlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: restingSeconds, actionTitle: actionTitle, onTapped: onTapped)

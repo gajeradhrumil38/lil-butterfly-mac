@@ -20,7 +20,7 @@ struct Config: Codable {
     var eveningMessages: [String]    // 18:00–20:59
     var lateNightMessages: [String]  // 21:00–23:59 and 0:00–0:59
     var sleepMessages: [String]      // used during quiet hours
-    var mode: String            // "roaming" | "docked"
+    var mode: String            // "roaming" | "docked" | "window"
     var dockEdge: String        // "left" | "right" | "top" | "bottom"
     var pinnedAssetIndex: Int?  // nil = random each visit
     var customIntervalSeconds: Double?  // nil = use minMinutes...maxMinutes; set by the menu's interval slider

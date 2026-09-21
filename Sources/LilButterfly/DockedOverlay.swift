@@ -20,6 +20,9 @@ final class DockedOverlay {
     private var positionFraction: Double?
     private var dragStartCenter: CGPoint?
     private var visitID = 0
+    private let windowTracker = WindowTracker()
+    private(set) var followsActiveWindow = false
+    private var activeWindowFrame: CGRect?
 
     /// Called after a drag ends with the new fraction (0...1) along the
     /// edge, so the caller can persist it.
@@ -37,11 +40,54 @@ final class DockedOverlay {
     /// Stops this overlay completely before the app switches back to roaming
     /// or rebuilds it after a display change.
     func stop() {
+        windowTracker.stop()
         removeButterflyAndVisit()
         window.orderOut(nil)
     }
 
     func parkNow(pinnedAssetIndex: Int?, displayWidth: CGFloat) { _ = ensureParked(pinnedAssetIndex: pinnedAssetIndex, displayWidth: displayWidth) }
+
+    /// Switches between docking to a fixed screen edge and following
+    /// whichever window is currently frontmost — polled every 0.4s via
+    /// WindowTracker (no Accessibility/Screen Recording permission
+    /// needed, since only window bounds are read, never titles or
+    /// content). Dragging doesn't apply while following a window (the
+    /// position is automatic), so handleDrag/handleDragEnd become no-ops
+    /// below; clicking to dismiss still works either way.
+    func setFollowsActiveWindow(_ follows: Bool) {
+        guard follows != followsActiveWindow else { return }
+        followsActiveWindow = follows
+        if follows {
+            windowTracker.onFrameChange = { [weak self] frame in
+                self?.activeWindowFrame = frame
+                self?.repositionForTrackedWindow()
+            }
+            windowTracker.start()
+        } else {
+            windowTracker.stop()
+            activeWindowFrame = nil
+        }
+    }
+
+    /// Smoothly moves the parked (not mid-visit) butterfly to the newly
+    /// tracked window's corner. Mid-visit repositioning is skipped
+    /// entirely — the message is anchored to wherever the butterfly was
+    /// when it appeared, and yanking it to a different window under an
+    /// open message would be jarring rather than helpful.
+    private func repositionForTrackedWindow() {
+        guard followsActiveWindow, !isBusy, let butterfly else { return }
+        let target = dockPoint(margin: 40)
+        let targetOrigin = CGPoint(x: target.x - butterfly.frame.width / 2, y: target.y - butterfly.frame.height / 2)
+        guard targetOrigin != butterfly.frame.origin else { return }
+        butterfly.layer?.removeAllAnimations()
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = 0.3
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            butterfly.animator().setFrameOrigin(targetOrigin)
+        }, completionHandler: { [weak self] in
+            self?.updateHandleWindowFrame()
+        })
+    }
 
     func updateEdge(_ edge: ScreenEdge, positionFraction: Double?) {
         self.edge = edge
@@ -63,6 +109,19 @@ final class DockedOverlay {
     /// dragged the butterfly to a specific spot, that fraction wins over the
     /// usual random placement along the edge.
     private func dockPoint(margin: CGFloat) -> CGPoint {
+        if followsActiveWindow {
+            guard let activeWindowFrame else {
+                // No active window found yet (the desktop itself is
+                // focused, or the frontmost app has no on-screen windows)
+                // — the screen's own top-right corner is a sensible place
+                // to wait rather than the butterfly having nowhere to be.
+                return CGPoint(x: screenFrame.width - margin, y: screenFrame.height - margin)
+            }
+            // The window's own top-right corner — letting the butterfly
+            // straddle it naturally, since (unlike a screen edge) nothing
+            // clips against another app's window bounds.
+            return CGPoint(x: activeWindowFrame.maxX, y: activeWindowFrame.maxY)
+        }
         switch edge {
         case .left, .right:
             let y = positionFraction.map { CGFloat($0) * screenFrame.height }
@@ -129,7 +188,7 @@ final class DockedOverlay {
     }
 
     private func handleDrag(dx: CGFloat, dy: CGFloat) {
-        guard let butterfly else { return }
+        guard !followsActiveWindow, let butterfly else { return }
         if dragStartCenter == nil {
             dragStartCenter = butterfly.centerPosition
         }
@@ -148,7 +207,7 @@ final class DockedOverlay {
 
     private func handleDragEnd() {
         defer { dragStartCenter = nil }
-        guard let butterfly else { return }
+        guard !followsActiveWindow, let butterfly else { return }
         let center = butterfly.centerPosition
         let fraction: Double
         switch edge {
