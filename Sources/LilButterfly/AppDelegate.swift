@@ -610,13 +610,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
             return
         }
+        isUpdating = true
+        if let menu = statusItem?.menu { rebuildMenu(menu) }
+        // `release` is whatever the last check found — up to 6 hours old
+        // by the time someone clicks. Several releases can land in that
+        // window, so ask again right now and install the newest one; one
+        // click should always jump straight to latest, never to an
+        // in-between version that's about to be superseded. If the
+        // re-check fails (offline, rate-limited), the known release is
+        // still newer than what's installed, so use that.
+        updateChecker.check { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                let fresh = (try? result.get()) ?? nil
+                if let fresh { self.latestRelease = fresh }
+                self.install(fresh ?? release, fromCard: fromCard, didNotRelaunch: didNotRelaunch)
+            }
+        }
+    }
+
+    private func install(_ release: GitHubRelease, fromCard: Bool, didNotRelaunch: @escaping (_ cardLine: String, _ notice: String) -> Void) {
         guard let downloadURL = release.appDownloadURL else {
+            isUpdating = false
+            if let menu = statusItem?.menu { rebuildMenu(menu) }
             NSWorkspace.shared.open(release.htmlURL)
             if fromCard { NotificationCenter.default.post(name: .butterflyUpdateDidNotRelaunch, object: "Opened the download page instead.") }
             return
         }
-        isUpdating = true
-        if let menu = statusItem?.menu { rebuildMenu(menu) }
         selfUpdater.update(downloadURL: downloadURL, beforeRelaunch: { relaunch in
             guard fromCard else { relaunch(); return }
             // The card plays its completion + exit, then relaunches. If no
@@ -634,8 +654,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self.isUpdating = false
             if let menu = self.statusItem?.menu { self.rebuildMenu(menu) }
             didNotRelaunch(
-                cardLine: "Update failed — try the menu.",
-                notice: "Could not install the update automatically.\n\(error.localizedDescription)\n\nYou can also open the download page instead."
+                "Update failed — try the menu.",
+                "Could not install the update automatically.\n\(error.localizedDescription)\n\nYou can also open the download page instead."
             )
         }
     }
