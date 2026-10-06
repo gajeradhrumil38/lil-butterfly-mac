@@ -103,6 +103,19 @@ final class InteractiveCheckInTests: XCTestCase {
         XCTAssertNotEqual(ActivityTracker.anyInputEventType, .null)
     }
 
+    func testEyeRestMentionsSessionLengthOnlyAfterAnHour() {
+        // Under an hour: never claims "N hours" of screen time.
+        for _ in 0..<50 {
+            let short = CheckInContent.eyeRestReset(activeSeconds: 20 * 60)
+            XCTAssertEqual(short.style, .eyeRestReset)
+            XCTAssertFalse(short.question.contains("hour"))
+        }
+        // Four hours in: the session-aware opener shows up (70% per visit,
+        // so 50 draws all missing it would be a real bug, not bad luck).
+        let long = (0..<50).map { _ in CheckInContent.eyeRestReset(activeSeconds: 4 * 3600).question }
+        XCTAssertTrue(long.contains { $0.contains("4 hours") })
+    }
+
     func testChoiceLayoutsGiveHeartsRoomAndWrapTextChips() {
         let hearts = CheckInContent.make(style: .favoriteColor)
         let heartBubble = BubbleView(message: hearts.question, choiceLabels: hearts.choices.map(\.label), checkInStyle: hearts.style)

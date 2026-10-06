@@ -346,8 +346,9 @@ final class DockedOverlay {
                     bubble.setLiveText(CheckInContent.randomBreathingClosingLine())
                 }
             } else if let checkIn, checkIn.style == .eyeRestReset {
+                let countdownPhrase = CheckInContent.randomEyeRestCountdownPhrase()
                 bubble.startCountdownRing(seconds: 20) { remaining in
-                    bubble.setLiveText("Look 20 feet away… \(remaining)")
+                    bubble.setLiveText("\(countdownPhrase) \(remaining)")
                 } completion: {
                     bubble.setLiveText(CheckInContent.randomEyeRestClosingLine())
                 }
@@ -422,8 +423,9 @@ final class DockedOverlay {
                         bubble.setLiveText(CheckInContent.randomBreathingClosingLine())
                     }
                 } else if let checkIn, checkIn.style == .eyeRestReset {
+                    let countdownPhrase = CheckInContent.randomEyeRestCountdownPhrase()
                     bubble.startCountdownRing(seconds: 20) { remaining in
-                        bubble.setLiveText("Look 20 feet away… \(remaining)")
+                        bubble.setLiveText("\(countdownPhrase) \(remaining)")
                     } completion: {
                         bubble.setLiveText(CheckInContent.randomEyeRestClosingLine())
                     }

@@ -147,21 +147,73 @@ struct CheckInContent {
     /// the actual 20 seconds with a countdown ring, rather than just
     /// naming the rule and leaving the user to self-time it.
     private static func eyeRestReset() -> CheckInContent {
-        CheckInContent(style: .eyeRestReset, question: [
-            "Time for a 20-20-20 reset 👀",
-            "Give your eyes a 20-second break",
-            "Every 20 minutes, 20 feet, 20 seconds — eye doctors' actual rule",
-            "Your focus muscles have been locked close up for a while",
-            "Let your eyes stop pulling focus for a moment",
-        ].randomElement()!, choices: [])
+        CheckInContent(style: .eyeRestReset, question: eyeRestOpeners.randomElement()!, choices: [])
     }
+
+    /// The same visit, but opened with a line that knows how long the
+    /// user has actually been at the screen (from ActivityTracker's real
+    /// continuous-use clock) once that's been a while — so a fourth-hour
+    /// reminder reads differently from a first one instead of repeating.
+    static func eyeRestReset(activeSeconds: TimeInterval) -> CheckInContent {
+        let hours = Int(activeSeconds / 3600)
+        guard hours >= 1 else { return eyeRestReset() }
+        let timeSpent = hours == 1 ? "an hour" : "\(hours) hours"
+        let sessionAware = [
+            "\(timeSpent) of screen — your eyes filed a complaint 👀",
+            "\(timeSpent) straight. Your eyes would like a word",
+            "You've been staring for \(timeSpent). Quick reset?",
+            "\(timeSpent) in. Time to look at literally anything else",
+            "\(timeSpent) of focus — impressive. Now unfocus for 20s",
+        ]
+        // Mostly session-aware once it's been a long stretch, but still
+        // mixed with the general pool so it doesn't become formulaic.
+        let question = Double.random(in: 0..<1) < 0.7 ? sessionAware.randomElement()! : eyeRestOpeners.randomElement()!
+        return CheckInContent(style: .eyeRestReset, question: question, choices: [])
+    }
+
+    private static let eyeRestOpeners = [
+        // gentle
+        "Time for a 20-20-20 reset 👀",
+        "Give your eyes a 20-second break",
+        "Every 20 minutes, 20 feet, 20 seconds — eye doctors' actual rule",
+        "Your focus muscles have been locked close up for a while",
+        "Let your eyes stop pulling focus for a moment",
+        "Your eyes have been on sprint mode — let them jog",
+        // playful
+        "Your eyeballs called. They want a vacation 🏝️",
+        "Plot twist: the most important thing is far away",
+        "Quick eye workout. No gym membership needed",
+        "The screen will still be here. Promise 🦋",
+        "Pixels are great. Distant things are greater",
+        "Eye yoga time 🧘 — nothing to stretch but focus",
+        "Your eyes deserve a window seat for 20 seconds",
+        "Hey, pretend you're a lighthouse keeper for a sec",
+    ]
+
+    /// Picked once per visit, then shown with the live countdown number —
+    /// so the 20 seconds don't always read the same way either.
+    static let eyeRestCountdownPhrases = [
+        "Look 20 feet away…",
+        "Find something far away…",
+        "Gaze out a window…",
+        "Look at the far wall…",
+        "Stare at the horizon 🌅…",
+        "Find the farthest thing…",
+        "Pirate mode: scan the sea 🏴‍☠️…",
+        "Look past the screen…",
+    ]
+    static func randomEyeRestCountdownPhrase() -> String { eyeRestCountdownPhrases.randomElement()! }
 
     static let eyeRestClosingLines = [
         "Welcome back 👀",
         "Nice, that's a good reset.",
         "Your eyes say thank you.",
-        "That's real relief for your focus muscles.",
+        "Real relief for your focus muscles.",
         "A few seconds, real recovery.",
+        "Eyes: refreshed. Pixels: still here 😄",
+        "Your eyes just high-fived you.",
+        "Vacation over. Back to it, gently.",
+        "Ahh. Much better, right?",
     ]
     static func randomEyeRestClosingLine() -> String { eyeRestClosingLines.randomElement()! }
 

@@ -39,6 +39,19 @@ final class ActivityTracker {
     /// at one, not just every two hours.
     static let blinkBreakInterval: TimeInterval = 40 * 60
 
+    /// The eye-rest cadence tightens as an unbroken session drags on —
+    /// eyes that have been on screen for four hours need a break more
+    /// often than ones twenty minutes into the day. A real break (3+
+    /// minutes idle) resets continuousActiveSeconds, so this relaxes back
+    /// to the gentle default on its own.
+    var currentEyeRestInterval: TimeInterval {
+        switch continuousActiveSeconds {
+        case ..<(3 * 3600): return Self.eyeRestInterval        // 2h
+        case ..<(5 * 3600): return 60 * 60                     // 1h
+        default: return 40 * 60                                // 40m
+        }
+    }
+
     private(set) var continuousActiveSeconds: TimeInterval = 0
     private(set) var secondsSinceLastEyeRestPrompt: TimeInterval = 0
     private(set) var secondsSinceLastBlinkBreak: TimeInterval = 0

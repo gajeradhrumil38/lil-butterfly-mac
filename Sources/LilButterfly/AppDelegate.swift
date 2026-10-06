@@ -157,13 +157,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             message = content.question
             restingSeconds = max(config.restingSeconds, 14)
             markActivityNudgeShown = { [weak self] in self?.activityTracker.markLongSessionNudgeShown() }
-        } else if activityTracker.secondsSinceLastEyeRestPrompt >= ActivityTracker.eyeRestInterval {
+        } else if activityTracker.secondsSinceLastEyeRestPrompt >= activityTracker.currentEyeRestInterval {
             // The eye-rest check-in fires from real continuous screen time
-            // (tracked by ActivityTracker, default every 2 hours — see
-            // ActivityTracker.eyeRestInterval), not a flat random chance
-            // shared with every other check-in style. The break it paces
-            // is still the real 20 seconds the 20-20-20 rule calls for.
-            let content = CheckInContent.make(style: .eyeRestReset)
+            // (tracked by ActivityTracker — every 2 hours normally,
+            // tightening to 1 hour after 3 unbroken hours and 40 minutes
+            // after 5; see currentEyeRestInterval), not a flat random
+            // chance. Its opener mentions how long the user's actually
+            // been at it once that's over an hour. The break it paces is
+            // still the real 20 seconds the 20-20-20 rule calls for.
+            let content = CheckInContent.eyeRestReset(activeSeconds: activityTracker.continuousActiveSeconds)
             checkIn = content
             message = content.question
             restingSeconds = max(config.restingSeconds, 14)
@@ -301,6 +303,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         for style in CheckInStyle.allCases {
             addCheckInTestItem(to: checkInTestMenu, title: style.displayName, style: style)
         }
+        checkInTestMenu.addItem(.separator())
+        let longSessionItem = NSMenuItem(title: "20-20-20 After 4 Hours On Screen", action: #selector(testLongSessionEyeRestTapped), keyEquivalent: "")
+        longSessionItem.target = self
+        checkInTestMenu.addItem(longSessionItem)
         let checkInTestItem = NSMenuItem(title: "Interactive Check-In", action: nil, keyEquivalent: "")
         checkInTestItem.image = symbolImage("hand.tap")
         checkInTestItem.submenu = checkInTestMenu
@@ -549,6 +555,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     /// Opens a check-in on demand so every choice can be exercised without
     /// waiting for the scheduled visit or the occasional-content chance.
+    /// Previews the session-aware eye-rest opener ("4 hours of screen —
+    /// your eyes filed a complaint") without actually waiting 4 hours.
+    @objc private func testLongSessionEyeRestTapped() {
+        _ = fireVisit(manualOverride: true, forcedCheckIn: CheckInContent.eyeRestReset(activeSeconds: 4 * 3600))
+    }
+
     @objc private func testInteractiveCheckInTapped(_ sender: NSMenuItem) {
         let style = (sender.representedObject as? String).flatMap(CheckInStyle.init(rawValue:))
         _ = fireVisit(manualOverride: true, forcedCheckIn: style.map(CheckInContent.make) ?? CheckInContent.random())
