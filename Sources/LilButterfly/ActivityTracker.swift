@@ -32,8 +32,16 @@ final class ActivityTracker {
     /// time the interval is crossed again.
     static let longSessionThreshold: TimeInterval = 3 * 60 * 60
 
+    /// Blink Break is a different, much lower-friction ask than the full
+    /// eye-rest reset (a few seconds, no 20-second hold), so it can afford
+    /// a shorter, independent cadence rather than sharing eyeRestInterval
+    /// — screens measurably cut blink rate the whole time you're looking
+    /// at one, not just every two hours.
+    static let blinkBreakInterval: TimeInterval = 40 * 60
+
     private(set) var continuousActiveSeconds: TimeInterval = 0
     private(set) var secondsSinceLastEyeRestPrompt: TimeInterval = 0
+    private(set) var secondsSinceLastBlinkBreak: TimeInterval = 0
     private(set) var hasShownLongSessionNudgeThisSession = false
     private var timer: Timer?
 
@@ -64,10 +72,12 @@ final class ActivityTracker {
         if idle >= Self.sessionResetIdleThreshold {
             continuousActiveSeconds = 0
             secondsSinceLastEyeRestPrompt = 0
+            secondsSinceLastBlinkBreak = 0
             hasShownLongSessionNudgeThisSession = false
         } else if idle < Self.idleThreshold {
             continuousActiveSeconds += Self.pollInterval
             secondsSinceLastEyeRestPrompt += Self.pollInterval
+            secondsSinceLastBlinkBreak += Self.pollInterval
         }
         // Between idleThreshold and sessionResetIdleThreshold — a short
         // pause, e.g. reading something — neither adds to nor resets
@@ -75,5 +85,6 @@ final class ActivityTracker {
     }
 
     func markEyeRestShown() { secondsSinceLastEyeRestPrompt = 0 }
+    func markBlinkBreakShown() { secondsSinceLastBlinkBreak = 0 }
     func markLongSessionNudgeShown() { hasShownLongSessionNudgeThisSession = true }
 }

@@ -91,6 +91,12 @@ struct Config: Codable {
                 "Notice one good thing around you",
                 "Let the sunlight find you for a minute",
                 "Step away from the desk and come back softer",
+                "Is your screen brighter than the room around it? Try matching them",
+                "Screen about an arm's length away keeps your eyes from overworking",
+                "Top of the screen near eye level, not up where you crane your neck",
+                "Screens cut your blink rate way down — a few slow ones helps",
+                "Evening screen time? Your display's warmer color setting might help",
+                "Dim the room, dim the screen — they read easier as a match",
             ],
             morningMessages: [
                 "Good morning — let the day begin gently",

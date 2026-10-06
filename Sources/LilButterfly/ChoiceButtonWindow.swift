@@ -83,14 +83,14 @@ final class ChoiceButtonWindow: NSPanel {
     static func style(for checkInStyle: CheckInStyle) -> Style {
         switch checkInStyle {
         case .smilePrompt, .gratitudeTap, .pickAWord: return .textChip
-        case .moodPicker, .favoriteColor, .energySlider, .breatheWithMe, .eyeRestReset: return .plainChip
+        case .moodPicker, .favoriteColor, .energySlider, .breatheWithMe, .eyeRestReset, .blinkBreak: return .plainChip
         }
     }
 
     static func feedback(for checkInStyle: CheckInStyle) -> Feedback {
         switch checkInStyle {
         case .smilePrompt, .gratitudeTap, .pickAWord: return .selectedChip
-        case .moodPicker, .favoriteColor, .energySlider, .breatheWithMe, .eyeRestReset: return .scale
+        case .moodPicker, .favoriteColor, .energySlider, .breatheWithMe, .eyeRestReset, .blinkBreak: return .scale
         }
     }
 

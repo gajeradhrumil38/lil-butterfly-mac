@@ -347,9 +347,13 @@ final class DockedOverlay {
                 }
             } else if let checkIn, checkIn.style == .eyeRestReset {
                 bubble.startCountdownRing(seconds: 20) { remaining in
-                    bubble.setLiveText("Look away… \(remaining)")
+                    bubble.setLiveText("Look 20 feet away… \(remaining)")
                 } completion: {
                     bubble.setLiveText(CheckInContent.randomEyeRestClosingLine())
+                }
+            } else if let checkIn, checkIn.style == .blinkBreak {
+                bubble.startBlinkBreak {
+                    bubble.setLiveText(CheckInContent.randomBlinkBreakClosingLine())
                 }
             } else if let checkIn {
                 choiceWindows = checkIn.choices.enumerated().map { index, choice in
@@ -419,9 +423,13 @@ final class DockedOverlay {
                     }
                 } else if let checkIn, checkIn.style == .eyeRestReset {
                     bubble.startCountdownRing(seconds: 20) { remaining in
-                        bubble.setLiveText("Look away… \(remaining)")
+                        bubble.setLiveText("Look 20 feet away… \(remaining)")
                     } completion: {
                         bubble.setLiveText(CheckInContent.randomEyeRestClosingLine())
+                    }
+                } else if let checkIn, checkIn.style == .blinkBreak {
+                    bubble.startBlinkBreak {
+                        bubble.setLiveText(CheckInContent.randomBlinkBreakClosingLine())
                     }
                 } else if let checkIn {
                     self.choiceWindows = checkIn.choices.enumerated().map { index, choice in

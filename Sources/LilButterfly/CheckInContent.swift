@@ -12,6 +12,7 @@ enum CheckInStyle: String, CaseIterable {
     case energySlider
     case breatheWithMe
     case eyeRestReset
+    case blinkBreak
 
     var displayName: String {
         switch self {
@@ -23,15 +24,17 @@ enum CheckInStyle: String, CaseIterable {
         case .energySlider: return "Energy Slider"
         case .breatheWithMe: return "Breathe With Me"
         case .eyeRestReset: return "20-20-20 Eye Rest"
+        case .blinkBreak: return "Blink Break"
         }
     }
 
     /// True for the styles that ask nothing of the user at all — no chip,
     /// no drag, nothing to pick. They still reserve BubbleView's one
-    /// full-width strip (for a breathing circle / countdown ring), just
-    /// like the slider does, but never build a ChoiceButtonWindow or log a
-    /// CheckInStore pick, since there's no pick to log.
-    var isZeroTap: Bool { self == .breatheWithMe || self == .eyeRestReset }
+    /// full-width strip (for a breathing circle / countdown ring / blink
+    /// cycle), just like the slider does, but never build a
+    /// ChoiceButtonWindow or log a CheckInStore pick, since there's no
+    /// pick to log.
+    var isZeroTap: Bool { self == .breatheWithMe || self == .eyeRestReset || self == .blinkBreak }
 
     /// Styles whose interactive surface is one continuous strip rather
     /// than a row of N labeled slots — the slider drags across it, the
@@ -63,6 +66,7 @@ struct CheckInContent {
         case .energySlider: return energySlider()
         case .breatheWithMe: return breatheWithMe()
         case .eyeRestReset: return eyeRestReset()
+        case .blinkBreak: return blinkBreak()
         }
     }
 
@@ -143,11 +147,40 @@ struct CheckInContent {
     /// the actual 20 seconds with a countdown ring, rather than just
     /// naming the rule and leaving the user to self-time it.
     private static func eyeRestReset() -> CheckInContent {
-        CheckInContent(style: .eyeRestReset, question: ["Time for a 20-20-20 reset 👀", "Give your eyes a 20-second break"].randomElement()!, choices: [])
+        CheckInContent(style: .eyeRestReset, question: [
+            "Time for a 20-20-20 reset 👀",
+            "Give your eyes a 20-second break",
+            "Every 20 minutes, 20 feet, 20 seconds — eye doctors' actual rule",
+            "Your focus muscles have been locked close up for a while",
+            "Let your eyes stop pulling focus for a moment",
+        ].randomElement()!, choices: [])
     }
 
-    static let eyeRestClosingLines = ["Welcome back 👀", "Nice, that's a good reset.", "Your eyes say thank you."]
+    static let eyeRestClosingLines = [
+        "Welcome back 👀",
+        "Nice, that's a good reset.",
+        "Your eyes say thank you.",
+        "That's real relief for your focus muscles.",
+        "A few seconds, real recovery.",
+    ]
     static func randomEyeRestClosingLine() -> String { eyeRestClosingLines.randomElement()! }
+
+    /// Zero-tap, distinct from the 20-20-20 reset: screens cut blink rate
+    /// from a normal 15-20/min down to roughly 5-7/min, which is a tear
+    /// film/dry-eye problem, not a focus-muscle one — the 20-20-20 break
+    /// doesn't address it at all. Deliberately much shorter/lower-friction
+    /// than that full reset, so it can run on its own, more frequent
+    /// cadence without feeling like a second big interruption.
+    private static func blinkBreak() -> CheckInContent {
+        CheckInContent(style: .blinkBreak, question: [
+            "Quick blink break 👀",
+            "Your blink rate drops a lot on screens — let's fix that",
+            "A few slow blinks for you",
+        ].randomElement()!, choices: [])
+    }
+
+    static let blinkBreakClosingLines = ["Nice, that helps more than it seems.", "Good — your eyes needed that.", "A little moisture goes a long way 👀"]
+    static func randomBlinkBreakClosingLine() -> String { blinkBreakClosingLines.randomElement()! }
 
     private static func pickAWord() -> CheckInContent {
         CheckInContent(style: .pickAWord, question: "Which word feels closest right now?", choices: [

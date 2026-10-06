@@ -335,6 +335,57 @@ final class BubbleView: NSView {
         RunLoop.main.add(timer, forMode: .common)
     }
 
+    /// Zero-tap blink cycle — distinct from the 20-20-20 countdown ring,
+    /// deliberately much shorter: a pill-shaped "eye" squashes shut and
+    /// opens again a few times, paced slowly enough to actually follow
+    /// rather than just glanced at. Targets the blink-rate drop screens
+    /// cause (a dry-eye/tear-film problem), which the 20-20-20 break
+    /// doesn't touch at all.
+    func startBlinkBreak(cycles: Int = 4, completion: @escaping () -> Void) {
+        let openHeight: CGFloat = 14
+        let closedHeight: CGFloat = 2
+        let eyeWidth: CGFloat = 26
+        let strip = choiceFrame(at: 0)
+        let center = CGPoint(x: strip.midX, y: strip.midY)
+
+        func frame(for height: CGFloat) -> CGRect {
+            CGRect(x: center.x - eyeWidth / 2, y: center.y - height / 2, width: eyeWidth, height: height)
+        }
+
+        let eye = NSView(frame: frame(for: openHeight))
+        eye.wantsLayer = true
+        eye.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.85).cgColor
+        eye.layer?.cornerRadius = openHeight / 2
+        addSubview(eye)
+
+        var remaining = cycles
+        func blinkOnce() {
+            NSAnimationContext.runAnimationGroup({ ctx in
+                ctx.duration = 0.18
+                ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
+                eye.animator().frame = frame(for: closedHeight)
+                eye.layer?.cornerRadius = closedHeight / 2
+            }, completionHandler: {
+                remaining -= 1
+                NSAnimationContext.runAnimationGroup({ ctx in
+                    ctx.duration = 0.22
+                    ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                    eye.animator().frame = frame(for: openHeight)
+                    eye.layer?.cornerRadius = openHeight / 2
+                }, completionHandler: {
+                    if remaining > 0 {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { blinkOnce() }
+                    } else {
+                        eye.removeFromSuperview()
+                        completion()
+                    }
+                })
+            })
+        }
+        setLiveText("👀 Blink slowly with me…")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { blinkOnce() }
+    }
+
     func fadeIn() {
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.5

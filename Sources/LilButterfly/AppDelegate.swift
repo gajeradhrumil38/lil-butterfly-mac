@@ -168,6 +168,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             message = content.question
             restingSeconds = max(config.restingSeconds, 14)
             markActivityNudgeShown = { [weak self] in self?.activityTracker.markEyeRestShown() }
+        } else if activityTracker.secondsSinceLastBlinkBreak >= ActivityTracker.blinkBreakInterval {
+            // A different, much lower-friction ask than the 20-20-20
+            // reset — screens cut blink rate the whole time you're
+            // looking at one (a dry-eye/tear-film problem the 20-20-20
+            // break doesn't touch), so this runs on its own, shorter
+            // cadence rather than waiting for the same 2-hour trigger.
+            let content = CheckInContent.make(style: .blinkBreak)
+            checkIn = content
+            message = content.question
+            restingSeconds = max(config.restingSeconds, 10)
+            markActivityNudgeShown = { [weak self] in self?.activityTracker.markBlinkBreakShown() }
         } else if forceCompanionVisit || (config.mode == "roaming" && config.isCompanionVisitEligible() && Double.random(in: 0..<1) < (1.0 / 15.0)) {
             // A rare surprise, not a schedule: eligible again roughly a
             // week after the last one (see Config.isCompanionVisitEligible),
