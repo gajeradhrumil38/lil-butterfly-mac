@@ -36,6 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         rebuildMenu(menu); scheduleNext(); updateMeetingReminderTimer()
         checkForUpdates(showResult: false)
         startPeriodicUpdateChecks()
+        announceUpdateIfJustInstalled()
         // A dedicated centered moment — a ring of butterflies bringing the
         // message, not an ordinary edge-in roaming visit — rather than
         // routing through fireVisit's quiet-hours/pause gating, since this
@@ -568,17 +569,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func checkForUpdatesTapped() { checkForUpdates(showResult: true) }
     @objc private func updateTapped() {
         guard let latestRelease else { return }
-        startSelfUpdate(release: latestRelease)
+        startSelfUpdate(release: latestRelease, fromCard: false)
     }
 
     /// Downloads, installs, and relaunches in place — a single click
     /// instead of sending the user to the GitHub release page to copy and
     /// run a terminal command themselves. Falls back to that page only if
     /// the release has no matching download asset to fetch.
-    private func startSelfUpdate(release: GitHubRelease) {
-        guard !isUpdating else { return }
+    /// `fromCard`: started from an Update Now button on a butterfly card,
+    /// which is now showing its own "Updating…" progress (UpdatingVisit)
+    /// and needs to hear about any outcome that isn't a relaunch so it
+    /// doesn't sit there spinning. The menu's Update item has no card,
+    /// so it keeps the separate notice instead.
+    private func startSelfUpdate(release: GitHubRelease, fromCard: Bool = true) {
+        func didNotRelaunch(cardLine: String, notice: String) {
+            if fromCard {
+                NotificationCenter.default.post(name: .butterflyUpdateDidNotRelaunch, object: cardLine)
+            } else {
+                showUpdateMessage(notice)
+            }
+        }
+        guard !isUpdating else {
+            if fromCard { NotificationCenter.default.post(name: .butterflyUpdateDidNotRelaunch, object: "Already updating — hang tight.") }
+            return
+        }
+        // A `swift run` dev build has no bundle version, so it always
+        // looks outdated and always offers Update — and a real self-update
+        // from it overwrites the *installed* /Applications app and quits
+        // the dev build (caught in a debugger: one menu Update click did
+        // exactly that). Dev builds act out the progress card instead,
+        // without touching the real install.
+        if Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") == nil {
+            if fromCard {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    NotificationCenter.default.post(name: .butterflyUpdateDidNotRelaunch, object: "Dev build — skipped the real install.")
+                }
+            } else {
+                showUpdateMessage("Dev build — self-update is off here.")
+            }
+            return
+        }
         guard let downloadURL = release.appDownloadURL else {
             NSWorkspace.shared.open(release.htmlURL)
+            if fromCard { NotificationCenter.default.post(name: .butterflyUpdateDidNotRelaunch, object: "Opened the download page instead.") }
             return
         }
         isUpdating = true
@@ -590,7 +623,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             // already launched).
             self.isUpdating = false
             if let menu = self.statusItem?.menu { self.rebuildMenu(menu) }
-            self.showUpdateMessage("Could not install the update automatically.\n\(error.localizedDescription)\n\nYou can also open the download page instead.")
+            didNotRelaunch(
+                cardLine: "Update failed — try the menu.",
+                notice: "Could not install the update automatically.\n\(error.localizedDescription)\n\nYou can also open the download page instead."
+            )
+        }
+    }
+
+    private static let lastLaunchedVersionKey = "lastLaunchedVersion"
+
+    /// The other half of the updating animation: a successful self-update
+    /// terminates this process mid-"Updating…", so the only place to say
+    /// "it worked" is the new version's first launch.
+    private func announceUpdateIfJustInstalled() {
+        let defaults = UserDefaults.standard
+        let previous = defaults.string(forKey: Self.lastLaunchedVersionKey)
+        defaults.set(installedVersion, forKey: Self.lastLaunchedVersionKey)
+        guard let previous, previous != installedVersion else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            guard let self else { return }
+            self.presentBubbleNotice(message: "Updated to v\(self.installedVersion) 🦋")
         }
     }
 

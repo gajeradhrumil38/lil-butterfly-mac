@@ -164,9 +164,14 @@ final class ScreenOverlay {
         // disappears, then the butterfly flies off — just early. The guard
         // means whichever fires first wins; the other becomes a no-op.
         var didLeave = false
+        // Set once Update Now is tapped: the card then stays up showing
+        // progress until the app relaunches, instead of timing out.
+        var holdOpen = false
+        var updateObserver: NSObjectProtocol?
         func leaveNow() {
             guard !didLeave else { return }
             didLeave = true
+            if let updateObserver { NotificationCenter.default.removeObserver(updateObserver) }
             butterfly.stopHover()
             companion?.stopHover()
             // Idempotent safety net: if the breathing style is closed
@@ -269,9 +274,11 @@ final class ScreenOverlay {
                     frame: choiceFrameOnScreen(0),
                     title: actionTitle ?? "Update",
                     style: .accentCapsule,
-                    feedback: .scale
+                    dismissesOnClick: false,
+                    feedback: .press
                 ) {
-                    leaveNow()
+                    holdOpen = true
+                    updateObserver = UpdatingVisit.begin(bubble: bubble, butterfly: butterfly, buttonWindows: self.choiceWindows, leave: leaveNow)
                     onTapped()
                 }
                 self.choiceWindows = [window]
@@ -281,7 +288,7 @@ final class ScreenOverlay {
             }
 
             DispatchQueue.main.asyncAfter(deadline: .now() + restingSeconds) {
-                leaveNow()
+                if !holdOpen { leaveNow() }
             }
         }
     }

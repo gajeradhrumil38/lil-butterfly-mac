@@ -386,6 +386,55 @@ final class BubbleView: NSView {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { blinkOnce() }
     }
 
+    private var updatingBar: CALayer?
+
+    /// Shown in place of the Update Now button once it's tapped: a thin
+    /// track with a short accent segment sliding across it, repeating.
+    /// Indeterminate on purpose — the download/install reports no real
+    /// progress, and Apple's HIG says to use an indeterminate indicator
+    /// when the duration is unknown rather than fake a percentage.
+    func showUpdating() {
+        setLiveText("Updating Butterfly…")
+        let strip = choiceFrame(at: 0)
+        let trackWidth = strip.width * 0.6
+        let track = CALayer()
+        track.frame = CGRect(x: strip.midX - trackWidth / 2, y: strip.midY - 1.5, width: trackWidth, height: 3)
+        track.cornerRadius = 1.5
+        track.backgroundColor = NSColor.white.withAlphaComponent(0.18).cgColor
+        track.masksToBounds = true
+
+        let segmentWidth = trackWidth * 0.3
+        let segment = CALayer()
+        segment.frame = CGRect(x: 0, y: 0, width: segmentWidth, height: 3)
+        segment.cornerRadius = 1.5
+        segment.backgroundColor = NSColor.controlAccentColor.cgColor
+        track.addSublayer(segment)
+
+        let slide = CABasicAnimation(keyPath: "position.x")
+        slide.fromValue = -segmentWidth / 2
+        slide.toValue = trackWidth + segmentWidth / 2
+        slide.duration = 1.1
+        slide.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        slide.repeatCount = .infinity
+        segment.add(slide, forKey: "slide")
+
+        track.opacity = 0
+        layer?.addSublayer(track)
+        let fade = CABasicAnimation(keyPath: "opacity")
+        fade.fromValue = 0
+        fade.toValue = 1
+        fade.duration = 0.25
+        track.add(fade, forKey: "fadeIn")
+        track.opacity = 1
+        updatingBar = track
+    }
+
+    func showUpdateFailed(_ text: String) {
+        updatingBar?.removeFromSuperlayer()
+        updatingBar = nil
+        setLiveText(text)
+    }
+
     func fadeIn() {
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.5

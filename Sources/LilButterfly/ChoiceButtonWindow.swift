@@ -12,18 +12,22 @@ final class ChoiceButtonWindow: NSPanel {
         case none
         case scale
         case selectedChip
+        /// For wide buttons (the update capsule spans nearly the whole
+        /// card): hover brightens instead of growing, and a click presses
+        /// *in* — `.scale`'s 12%/30% growth, tuned for small emoji, pushed
+        /// a full-width button straight past the card's own edges.
+        case press
 
         var hoverScale: CGFloat {
             switch self {
-            case .none: return 1
+            case .none, .selectedChip, .press: return 1
             case .scale: return 1.12
-            case .selectedChip: return 1
             }
         }
 
         var clickScale: CGFloat {
             switch self {
-            case .none: return 1
+            case .none, .press: return 1
             case .scale: return 1.3
             case .selectedChip: return 1.06
             }
@@ -206,6 +210,15 @@ final class ChoiceButtonWindow: NSPanel {
     }
 
     private func hoverChanged(_ isInside: Bool) {
+        if feedback == .press, let button, !isTapped {
+            let base = style.backgroundColor
+            let color = isInside ? (base.blended(withFraction: 0.18, of: .white) ?? base) : base
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.12
+                button.layer?.backgroundColor = color.cgColor
+            }
+            return
+        }
         guard let button, feedback.hoverScale > 1, !isTapped else { return }
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.12
@@ -228,6 +241,24 @@ final class ChoiceButtonWindow: NSPanel {
     private func animateFeedback() {
         guard let button, feedback != .none else { return }
         isTapped = true
+        if feedback == .press {
+            // Dip to 95% and settle back — reads as a physical press,
+            // and only ever shrinks, so it can't cross the card's edge.
+            // AppKit anchors a layer-backed view at its bottom-left, so
+            // recenter first or the press shrinks toward a corner.
+            if let layer = button.layer {
+                let f = layer.frame
+                layer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+                layer.position = CGPoint(x: f.midX, y: f.midY)
+            }
+            let press = CAKeyframeAnimation(keyPath: "transform.scale")
+            press.values = [1.0, 0.95, 1.0]
+            press.keyTimes = [0, 0.4, 1]
+            press.duration = 0.22
+            press.timingFunctions = [CAMediaTimingFunction(name: .easeOut), CAMediaTimingFunction(name: .easeInEaseOut)]
+            button.layer?.add(press, forKey: "press")
+            return
+        }
         if feedback == .selectedChip {
             button.layer?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.9).cgColor
             button.layer?.cornerRadius = 10

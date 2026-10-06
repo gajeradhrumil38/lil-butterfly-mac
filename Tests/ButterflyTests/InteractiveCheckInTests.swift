@@ -116,6 +116,34 @@ final class InteractiveCheckInTests: XCTestCase {
         XCTAssertTrue(long.contains { $0.contains("4 hours") })
     }
 
+    func testUpdatingBarAppearsInButtonSlotAndClearsOnFailure() {
+        let bubble = BubbleView(message: "A new Butterfly (v9.9.9) is ready.", choiceLabels: ["Update Now"])
+        func slidingBar() -> CALayer? {
+            bubble.layer?.sublayers?.first { $0.sublayers?.first?.animation(forKey: "slide") != nil }
+        }
+        XCTAssertNil(slidingBar())
+
+        bubble.showUpdating()
+        let bar = try? XCTUnwrap(slidingBar())
+        XCTAssertNotNil(bar, "an indeterminate bar should be animating")
+        if let bar {
+            // Sits inside the slot the Update Now button occupied, not
+            // somewhere outside the card.
+            XCTAssertTrue(bubble.choiceFrame(at: 0).contains(CGPoint(x: bar.frame.midX, y: bar.frame.midY)))
+            XCTAssertTrue(bubble.bounds.contains(bar.frame))
+        }
+
+        bubble.showUpdateFailed("Update failed — try the menu.")
+        XCTAssertNil(slidingBar(), "failure should stop the progress bar")
+    }
+
+    func testPressFeedbackNeverGrowsPastItsFrame() {
+        // The update button spans nearly the whole card; anything above
+        // 1.0 here is what pushed it outside the card on hover/click.
+        XCTAssertEqual(ChoiceButtonWindow.Feedback.press.hoverScale, 1)
+        XCTAssertEqual(ChoiceButtonWindow.Feedback.press.maxScale, 1)
+    }
+
     func testChoiceLayoutsGiveHeartsRoomAndWrapTextChips() {
         let hearts = CheckInContent.make(style: .favoriteColor)
         let heartBubble = BubbleView(message: hearts.question, choiceLabels: hearts.choices.map(\.label), checkInStyle: hearts.style)
