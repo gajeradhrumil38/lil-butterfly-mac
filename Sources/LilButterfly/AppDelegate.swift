@@ -674,7 +674,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @discardableResult
     private func presentBubbleNotice(message: String, actionTitle: String? = nil, onTapped: (() -> Void)? = nil) -> Bool {
         let displayWidth = ButterflySize.width(forIndex: config.butterflySizeIndex)
-        let restingSeconds = max(config.restingSeconds, 14)
+        // The long hold is only for notices with a button to aim at; a
+        // plain status line ("up to date") should just be read and go.
+        let restingSeconds = actionTitle == nil ? 4 : max(config.restingSeconds, 14)
         if config.mode == "docked" || config.mode == "window" {
             guard let dockedOverlay, dockedOverlay.isAvailable else { return false }
             dockedOverlay.visit(message: message, pinnedAssetIndex: config.pinnedAssetIndex, displayWidth: displayWidth, restingSeconds: restingSeconds, actionTitle: actionTitle, onTapped: onTapped)
