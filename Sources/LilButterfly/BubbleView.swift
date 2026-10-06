@@ -55,7 +55,17 @@ final class BubbleView: NSView {
         return choiceFrames[index]
     }
 
-    init(message: String, choiceLabels: [String] = [], checkInStyle: CheckInStyle? = nil) {
+    enum IllustrationChoice {
+        case automatic
+        case none
+        case kind(IllustrationKind)
+    }
+
+    private var illustrationView: IllustrationView?
+    private static let illustrationSize: CGFloat = 30
+    private static let illustrationGap: CGFloat = 10
+
+    init(message: String, choiceLabels: [String] = [], checkInStyle: CheckInStyle? = nil, illustration: IllustrationChoice = .automatic) {
         super.init(frame: .zero)
         wantsLayer = true
         effectView.material = .hudWindow
@@ -104,9 +114,18 @@ final class BubbleView: NSView {
         addSubview(label)
 
         let maxWidth: CGFloat = checkInStyle == .favoriteColor ? 380 : 360
+        let kind: IllustrationKind?
+        switch illustration {
+        case .automatic: kind = IllustrationKind.resolve(message: message, checkInStyle: checkInStyle)
+        case .none: kind = nil
+        case .kind(let chosen): kind = chosen
+        }
+        // An illustration takes a column on the left; the text shifts right
+        // by its width plus a gap instead of the card just getting taller.
+        let illustrationColumn: CGFloat = kind == nil ? 0 : Self.illustrationSize + Self.illustrationGap
         // 14pt left inset + 26pt on the right to clear the close (✕) button
         // that sits in the top-right corner (see closeTargetFrame above).
-        let horizontalPadding: CGFloat = 40
+        let horizontalPadding: CGFloat = 40 + illustrationColumn
         let attributes: [NSAttributedString.Key: Any] = [.font: font]
         let naturalMeasured = (message as NSString).boundingRect(
             with: CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude),
@@ -122,7 +141,11 @@ final class BubbleView: NSView {
         case .moodPicker, .energySlider: minimumChoiceWidth = 300
         default: minimumChoiceWidth = choiceLabels.isEmpty ? 0 : 270
         }
-        let width = min(maxWidth, max(150, ceil(naturalMeasured.width) + horizontalPadding, minimumChoiceWidth))
+        // The illustration column widens the card rather than eating into
+        // the text: cards whose text gets replaced live (countdowns,
+        // closing lines) were measured against the old text width, and a
+        // narrower one would wrap them into a line the fixed height clips.
+        let width = min(maxWidth, max(150, ceil(naturalMeasured.width) + horizontalPadding, minimumChoiceWidth + illustrationColumn))
         let textWidth = width - horizontalPadding
 
         // Ask TextKit for the height of the actual laid-out glyphs. Unlike
@@ -138,12 +161,22 @@ final class BubbleView: NSView {
             result = max(result, Int((choiceFrame.minY - 10) / (Self.choiceRowHeight + 6)) + 1)
         }
         let choiceAreaHeight: CGFloat = choiceLabels.isEmpty ? 0 : 18 + CGFloat(rowCount) * Self.choiceRowHeight + CGFloat(max(0, rowCount - 1)) * 6
-        let height = textHeight + 20 + choiceAreaHeight
+        // At least as tall as the illustration, with the text centered
+        // beside it when it's a single short line.
+        let contentHeight = max(textHeight, kind == nil ? 0 : Self.illustrationSize)
+        let height = contentHeight + 20 + choiceAreaHeight
         frame = CGRect(x: 0, y: 0, width: width, height: height)
         effectView.frame = CGRect(x: 0, y: 0, width: width, height: height)
         effectView.layer?.cornerRadius = min(Self.cornerRadius, height / 2)
         effectView.layer?.sublayers?.first(where: { $0 is CAGradientLayer })?.frame = effectView.bounds
-        label.frame = CGRect(x: 14, y: 10 + choiceAreaHeight, width: textWidth, height: textHeight)
+        let contentY = 10 + choiceAreaHeight
+        label.frame = CGRect(x: 14 + illustrationColumn, y: contentY + (contentHeight - textHeight) / 2, width: textWidth, height: textHeight)
+        if let kind {
+            let art = IllustrationView(kind: kind, size: CGSize(width: Self.illustrationSize, height: Self.illustrationSize))
+            art.setFrameOrigin(CGPoint(x: 14, y: contentY + (contentHeight - Self.illustrationSize) / 2))
+            addSubview(art)
+            illustrationView = art
+        }
 
         setUpDots(in: label.frame)
         addSubview(dotsContainer)
@@ -336,54 +369,29 @@ final class BubbleView: NSView {
     }
 
     /// Zero-tap blink cycle — distinct from the 20-20-20 countdown ring,
-    /// deliberately much shorter: a pill-shaped "eye" squashes shut and
-    /// opens again a few times, paced slowly enough to actually follow
+    /// deliberately much shorter: a pair of illustrated eyes blink shut and
+    /// open again a few times, paced slowly enough to actually follow
     /// rather than just glanced at. Targets the blink-rate drop screens
     /// cause (a dry-eye/tear-film problem), which the 20-20-20 break
     /// doesn't touch at all.
     func startBlinkBreak(cycles: Int = 4, completion: @escaping () -> Void) {
-        let openHeight: CGFloat = 14
-        let closedHeight: CGFloat = 2
-        let eyeWidth: CGFloat = 26
         let strip = choiceFrame(at: 0)
-        let center = CGPoint(x: strip.midX, y: strip.midY)
-
-        func frame(for height: CGFloat) -> CGRect {
-            CGRect(x: center.x - eyeWidth / 2, y: center.y - height / 2, width: eyeWidth, height: height)
-        }
-
-        let eye = NSView(frame: frame(for: openHeight))
-        eye.wantsLayer = true
-        eye.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.85).cgColor
-        eye.layer?.cornerRadius = openHeight / 2
-        addSubview(eye)
-
-        var remaining = cycles
-        func blinkOnce() {
-            NSAnimationContext.runAnimationGroup({ ctx in
-                ctx.duration = 0.18
-                ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
-                eye.animator().frame = frame(for: closedHeight)
-                eye.layer?.cornerRadius = closedHeight / 2
-            }, completionHandler: {
-                remaining -= 1
+        let eyes = IllustrationView(kind: .eyes, size: CGSize(width: 44, height: 30))
+        eyes.setFrameOrigin(CGPoint(x: strip.midX - 22, y: strip.midY - 15))
+        addSubview(eyes)
+        eyes.playEntrance()
+        setLiveText("Blink slowly with me…")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+            eyes.blink(times: cycles) {
                 NSAnimationContext.runAnimationGroup({ ctx in
-                    ctx.duration = 0.22
-                    ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
-                    eye.animator().frame = frame(for: openHeight)
-                    eye.layer?.cornerRadius = openHeight / 2
+                    ctx.duration = 0.25
+                    eyes.animator().alphaValue = 0
                 }, completionHandler: {
-                    if remaining > 0 {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { blinkOnce() }
-                    } else {
-                        eye.removeFromSuperview()
-                        completion()
-                    }
+                    eyes.removeFromSuperview()
+                    completion()
                 })
-            })
+            }
         }
-        setLiveText("👀 Blink slowly with me…")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { blinkOnce() }
     }
 
     private var updatingBar: CALayer?
@@ -469,6 +477,27 @@ final class BubbleView: NSView {
             ctx.duration = 0.5
             animator().alphaValue = 1
         }
+        // Grow in from 96% rather than only fading — the card reads as
+        // arriving with the butterfly instead of materializing in place.
+        // AppKit anchors this layer at its bottom-left and the overlays
+        // position the card by its frame, so instead of moving the anchor
+        // (which would fight that), scale around the center by wrapping
+        // the scale in a translate there and back.
+        if let layer {
+            let c = CGPoint(x: bounds.width / 2, y: bounds.height / 2)
+            var t = CATransform3DMakeTranslation(-c.x, -c.y, 0)
+            t = CATransform3DConcat(t, CATransform3DMakeScale(0.96, 0.96, 1))
+            t = CATransform3DConcat(t, CATransform3DMakeTranslation(c.x, c.y, 0))
+            let grow = CASpringAnimation(keyPath: "transform")
+            grow.fromValue = t
+            grow.toValue = CATransform3DIdentity
+            grow.damping = 14
+            grow.stiffness = 170
+            grow.duration = grow.settlingDuration
+            layer.add(grow, forKey: "growIn")
+        }
+        // The illustration lands just after the card, like it hopped on.
+        illustrationView?.playEntrance(delay: 0.18)
         // Tied to fadeIn (the moment the card is actually visible) rather
         // than init, since the card is typically created well before it's
         // shown (e.g. during the fly-in animation) — timing this from init

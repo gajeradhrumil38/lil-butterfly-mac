@@ -159,7 +159,7 @@ struct CheckInContent {
         guard hours >= 1 else { return eyeRestReset() }
         let timeSpent = hours == 1 ? "an hour" : "\(hours) hours"
         let sessionAware = [
-            "\(timeSpent) of screen — your eyes filed a complaint 👀",
+            "\(timeSpent) of screen — your eyes filed a complaint",
             "\(timeSpent) straight. Your eyes would like a word",
             "You've been staring for \(timeSpent). Quick reset?",
             "\(timeSpent) in. Time to look at literally anything else",
@@ -173,7 +173,7 @@ struct CheckInContent {
 
     private static let eyeRestOpeners = [
         // gentle
-        "Time for a 20-20-20 reset 👀",
+        "Time for a 20-20-20 reset",
         "Give your eyes a 20-second break",
         "Every 20 minutes, 20 feet, 20 seconds — eye doctors' actual rule",
         "Your focus muscles have been locked close up for a while",
@@ -205,7 +205,7 @@ struct CheckInContent {
     static func randomEyeRestCountdownPhrase() -> String { eyeRestCountdownPhrases.randomElement()! }
 
     static let eyeRestClosingLines = [
-        "Welcome back 👀",
+        "Welcome back",
         "Nice, that's a good reset.",
         "Your eyes say thank you.",
         "Real relief for your focus muscles.",
@@ -225,7 +225,7 @@ struct CheckInContent {
     /// cadence without feeling like a second big interruption.
     private static func blinkBreak() -> CheckInContent {
         CheckInContent(style: .blinkBreak, question: [
-            "Quick blink break 👀",
+            "Quick blink break",
             "Your blink rate drops a lot on screens — let's fix that",
             "A few slow blinks for you",
         ].randomElement()!, choices: [])

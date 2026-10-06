@@ -155,6 +155,27 @@ final class InteractiveCheckInTests: XCTestCase {
         XCTAssertEqual(ChoiceButtonWindow.Feedback.press.maxScale, 1)
     }
 
+    func testIllustrationsPickedFromWordingAndOnlyWhereTheyFit() {
+        func kind(_ m: String, _ style: CheckInStyle? = nil) -> IllustrationKind? { IllustrationKind.resolve(message: m, checkInStyle: style) }
+        XCTAssertEqual(kind("Drink some water 💧"), .water)
+        XCTAssertEqual(kind("Blink a few times on purpose"), .eyes)
+        XCTAssertEqual(kind("Rest now, dream a little"), .moon)
+        XCTAssertEqual(kind("Proud of how hard you're working"), .heart)
+        XCTAssertNil(kind("A new Butterfly (v9.9.9) is ready."), "update notices stay plain")
+        XCTAssertEqual(kind("anything", .eyeRestReset), .eyesLookingFar)
+        XCTAssertNil(kind("How are you feeling right now?", .moodPicker), "choice cards keep their own layout")
+        XCTAssertNil(kind("Quick blink break", .blinkBreak), "blink break animates eyes in its own strip")
+    }
+
+    func testIconColumnDoesNotShrinkTextAreaOfLiveTextCards() {
+        // Cards whose text is replaced live (20-20-20 countdown and
+        // closing lines) were sized for >= 230pt of text; the icon must
+        // widen the card, not eat into that, or those lines wrap and clip.
+        let card = BubbleView(message: "Give your eyes a 20-second break", choiceLabels: [""], checkInStyle: .eyeRestReset)
+        let textWidth = card.frame.width - 80 // 14 left + 40 icon column + 26 right
+        XCTAssertGreaterThanOrEqual(textWidth, 230)
+    }
+
     func testChoiceLayoutsGiveHeartsRoomAndWrapTextChips() {
         let hearts = CheckInContent.make(style: .favoriteColor)
         let heartBubble = BubbleView(message: hearts.question, choiceLabels: hearts.choices.map(\.label), checkInStyle: hearts.style)
