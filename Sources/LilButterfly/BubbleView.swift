@@ -387,14 +387,16 @@ final class BubbleView: NSView {
     }
 
     private var updatingBar: CALayer?
+    private var updatingSegment: CALayer?
 
     /// Shown in place of the Update Now button once it's tapped: a thin
     /// track with a short accent segment sliding across it, repeating.
     /// Indeterminate on purpose — the download/install reports no real
     /// progress, and Apple's HIG says to use an indeterminate indicator
-    /// when the duration is unknown rather than fake a percentage.
+    /// when the duration is unknown rather than fake a percentage. The
+    /// text crossfades (revealReply) rather than swapping instantly.
     func showUpdating() {
-        setLiveText("Updating Butterfly…")
+        revealReply("Updating Butterfly…")
         let strip = choiceFrame(at: 0)
         let trackWidth = strip.width * 0.6
         let track = CALayer()
@@ -427,12 +429,39 @@ final class BubbleView: NSView {
         track.add(fade, forKey: "fadeIn")
         track.opacity = 1
         updatingBar = track
+        updatingSegment = segment
+    }
+
+    /// The finish line: the sliding segment grows from wherever it is
+    /// right now to fill the whole track (no jump — it starts from the
+    /// segment's on-screen position, not its model position), and the
+    /// text crossfades to the completion line.
+    func showUpdateComplete(_ text: String) {
+        revealReply(text)
+        guard let track = updatingBar, let segment = updatingSegment else { return }
+        let current = segment.presentation()?.frame ?? segment.frame
+        segment.removeAnimation(forKey: "slide")
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        segment.frame = current
+        CATransaction.commit()
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.45)
+        CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeOut))
+        segment.frame = CGRect(x: 0, y: 0, width: track.bounds.width, height: track.bounds.height)
+        CATransaction.commit()
     }
 
     func showUpdateFailed(_ text: String) {
-        updatingBar?.removeFromSuperlayer()
+        revealReply(text)
+        guard let track = updatingBar else { return }
         updatingBar = nil
-        setLiveText(text)
+        updatingSegment = nil
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.2)
+        CATransaction.setCompletionBlock { track.removeFromSuperlayer() }
+        track.opacity = 0
+        CATransaction.commit()
     }
 
     func fadeIn() {

@@ -18,16 +18,33 @@ final class SelfUpdater {
         }
     }
 
-    /// Runs entirely on a background queue. On success the new app is
-    /// already launched and this process calls NSApp.terminate — completion
-    /// only meaningfully fires on failure (the old process is still around
-    /// to report it).
-    func update(downloadURL: URL, completion: @escaping (Error?) -> Void) {
+    /// Downloads and installs on a background queue. Once the new app is
+    /// in place, `beforeRelaunch` gets a `relaunch` closure instead of
+    /// this process quitting on the spot — so an on-screen "Updating..."
+    /// card can play its completion and exit animation first, rather than
+    /// being cut off mid-frame. `relaunch` opens the new app, then quits
+    /// this one; it's safe to call more than once. `completion` fires only
+    /// on failure (the old process is still around to report it).
+    func update(
+        downloadURL: URL,
+        beforeRelaunch: @escaping (_ relaunch: @escaping () -> Void) -> Void,
+        completion: @escaping (Error?) -> Void
+    ) {
         DispatchQueue.global(qos: .userInitiated).async {
             do {
                 try self.performUpdate(downloadURL: downloadURL)
                 DispatchQueue.main.async {
-                    NSApp.terminate(nil)
+                    var didRelaunch = false
+                    beforeRelaunch {
+                        guard !didRelaunch else { return }
+                        didRelaunch = true
+                        do {
+                            try self.run("/usr/bin/open", ["/Applications/Butterfly.app"])
+                            NSApp.terminate(nil)
+                        } catch {
+                            completion(error)
+                        }
+                    }
                 }
             } catch {
                 DispatchQueue.main.async { completion(error) }
@@ -67,8 +84,6 @@ final class SelfUpdater {
         } else {
             try runElevated(replaceCommand)
         }
-
-        try run("/usr/bin/open", [destinationPath])
     }
 
     @discardableResult

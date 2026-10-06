@@ -326,7 +326,7 @@ final class DockedOverlay {
         // Set once Update Now is tapped: the card then stays up showing
         // progress until the app relaunches, instead of timing out.
         var holdOpen = false
-        var updateObserver: NSObjectProtocol?
+        var updateObservers: [NSObjectProtocol] = []
 
         if Bool.random() {
             butterfly.alphaValue = 1
@@ -373,7 +373,7 @@ final class DockedOverlay {
             } else if let onTapped {
                 let window = ChoiceButtonWindow(frame: choiceFrameOnScreen(0), title: actionTitle ?? "Update", style: .accentCapsule, dismissesOnClick: false, feedback: .press) {
                     holdOpen = true
-                    updateObserver = UpdatingVisit.begin(bubble: bubble, butterfly: butterfly, buttonWindows: self.choiceWindows, leave: { leaveNow() })
+                    updateObservers = UpdatingVisit.begin(bubble: bubble, butterfly: butterfly, buttonWindows: self.choiceWindows, leave: { leaveNow() })
                     onTapped()
                 }
                 choiceWindows = [window]
@@ -385,7 +385,7 @@ final class DockedOverlay {
             leaveNow = {
                 guard !didLeave, self.visitID == currentVisitID else { return }
                 didLeave = true
-                if let updateObserver { NotificationCenter.default.removeObserver(updateObserver) }
+                updateObservers.forEach { NotificationCenter.default.removeObserver($0) }
                 butterfly.stopHover()
                 butterfly.setFlutterRate(1.0)
                 self.closeWindow?.fadeOutAndOrderOut(duration: BubbleView.fadeOutDuration)
@@ -452,7 +452,7 @@ final class DockedOverlay {
                 } else if let onTapped {
                     let window = ChoiceButtonWindow(frame: choiceFrameOnScreen(0), title: actionTitle ?? "Update", style: .accentCapsule, dismissesOnClick: false, feedback: .press) {
                         holdOpen = true
-                        updateObserver = UpdatingVisit.begin(bubble: bubble, butterfly: butterfly, buttonWindows: self.choiceWindows, leave: { leaveNow() })
+                        updateObservers = UpdatingVisit.begin(bubble: bubble, butterfly: butterfly, buttonWindows: self.choiceWindows, leave: { leaveNow() })
                         onTapped()
                     }
                     self.choiceWindows = [window]
@@ -464,7 +464,7 @@ final class DockedOverlay {
                 leaveNow = {
                     guard !didLeave, self.visitID == currentVisitID else { return }
                     didLeave = true
-                    if let updateObserver { NotificationCenter.default.removeObserver(updateObserver) }
+                    updateObservers.forEach { NotificationCenter.default.removeObserver($0) }
                     butterfly.stopHover()
                     butterfly.setFlutterRate(1.0)
                     self.closeWindow?.fadeOutAndOrderOut(duration: BubbleView.fadeOutDuration)

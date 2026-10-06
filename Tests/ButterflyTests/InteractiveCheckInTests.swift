@@ -134,7 +134,18 @@ final class InteractiveCheckInTests: XCTestCase {
         }
 
         bubble.showUpdateFailed("Update failed — try the menu.")
-        XCTAssertNil(slidingBar(), "failure should stop the progress bar")
+        XCTAssertEqual(bar?.opacity, 0, "failure should fade the progress bar out")
+    }
+
+    func testUpdateCompleteFillsTheBarAndStopsSliding() {
+        let bubble = BubbleView(message: "A new Butterfly (v9.9.9) is ready.", choiceLabels: ["Update Now"])
+        bubble.showUpdating()
+        guard let track = bubble.layer?.sublayers?.first(where: { $0.sublayers?.first?.animation(forKey: "slide") != nil }),
+              let segment = track.sublayers?.first else { return XCTFail("no progress bar") }
+
+        bubble.showUpdateComplete("Restarting Butterfly…")
+        XCTAssertNil(segment.animation(forKey: "slide"), "the indeterminate slide should stop at completion")
+        XCTAssertEqual(segment.frame.width, track.bounds.width, accuracy: 0.5, "the bar should end full")
     }
 
     func testPressFeedbackNeverGrowsPastItsFrame() {

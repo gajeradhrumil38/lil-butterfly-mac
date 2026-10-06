@@ -296,6 +296,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let testMenu = NSMenu(title: "Test")
         testMenu.minimumWidth = 250
         addItem(to: testMenu, title: "Show Butterfly (with a Friend)", action: #selector(showCompanionVisitTapped), symbol: "sparkles")
+        addItem(to: testMenu, title: "Update Card Preview", action: #selector(testUpdateCardTapped), symbol: "arrow.down.circle")
         testMenu.addItem(.separator())
         let checkInTestMenu = NSMenu(title: "Interactive Check-In")
         checkInTestMenu.minimumWidth = 240
@@ -601,9 +602,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // without touching the real install.
         if Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") == nil {
             if fromCard {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                    NotificationCenter.default.post(name: .butterflyUpdateDidNotRelaunch, object: "Dev build — skipped the real install.")
-                }
+                // Plays the whole real sequence (updating -> done -> exit)
+                // so the motion can be checked, just without installing.
+                previewUpdateCompletion(line: "Dev build — nothing installed.")
             } else {
                 showUpdateMessage("Dev build — self-update is off here.")
             }
@@ -616,7 +617,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         isUpdating = true
         if let menu = statusItem?.menu { rebuildMenu(menu) }
-        selfUpdater.update(downloadURL: downloadURL) { [weak self] error in
+        selfUpdater.update(downloadURL: downloadURL, beforeRelaunch: { relaunch in
+            guard fromCard else { relaunch(); return }
+            // The card plays its completion + exit, then relaunches. If no
+            // card is listening (the user closed it with the x while it
+            // was installing), this fallback still relaunches — the
+            // handle makes a second call a no-op.
+            let handle = RelaunchHandle(completionLine: "Restarting Butterfly…", relaunch: relaunch)
+            NotificationCenter.default.post(name: .butterflyUpdateWillRelaunch, object: handle)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 6) { relaunch() }
+        }) { [weak self] error in
             guard let self, let error else { return }
             // Only reached on failure — success replaces this process
             // entirely (SelfUpdater terminates the app once the new one is
@@ -627,6 +637,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 cardLine: "Update failed — try the menu.",
                 notice: "Could not install the update automatically.\n\(error.localizedDescription)\n\nYou can also open the download page instead."
             )
+        }
+    }
+
+    /// Acts out a successful install on whatever update card is showing,
+    /// without installing anything — for dev builds and the Test menu.
+    private func previewUpdateCompletion(line: String) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            NotificationCenter.default.post(name: .butterflyUpdateWillRelaunch, object: RelaunchHandle(completionLine: line, relaunch: {}))
+        }
+    }
+
+    /// Test menu: the full Update Now flow — card, press, "Updating…",
+    /// bar fills, "Done", exit — with nothing downloaded or installed,
+    /// so the motion can be seen without waiting for a real release.
+    @objc private func testUpdateCardTapped() {
+        presentBubbleNotice(message: "A new Butterfly (v9.9.9) is ready.", actionTitle: "Update Now") { [weak self] in
+            self?.previewUpdateCompletion(line: "Preview done — nothing installed.")
         }
     }
 

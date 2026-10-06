@@ -167,11 +167,11 @@ final class ScreenOverlay {
         // Set once Update Now is tapped: the card then stays up showing
         // progress until the app relaunches, instead of timing out.
         var holdOpen = false
-        var updateObserver: NSObjectProtocol?
+        var updateObservers: [NSObjectProtocol] = []
         func leaveNow() {
             guard !didLeave else { return }
             didLeave = true
-            if let updateObserver { NotificationCenter.default.removeObserver(updateObserver) }
+            updateObservers.forEach { NotificationCenter.default.removeObserver($0) }
             butterfly.stopHover()
             companion?.stopHover()
             // Idempotent safety net: if the breathing style is closed
@@ -278,7 +278,7 @@ final class ScreenOverlay {
                     feedback: .press
                 ) {
                     holdOpen = true
-                    updateObserver = UpdatingVisit.begin(bubble: bubble, butterfly: butterfly, buttonWindows: self.choiceWindows, leave: leaveNow)
+                    updateObservers = UpdatingVisit.begin(bubble: bubble, butterfly: butterfly, buttonWindows: self.choiceWindows, leave: leaveNow)
                     onTapped()
                 }
                 self.choiceWindows = [window]
